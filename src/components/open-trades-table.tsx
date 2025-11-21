@@ -1,15 +1,17 @@
 import { TickerAvatar } from "@/components/ticker-avatar";
-import type { OpenPosition } from "@/pages/trading/types";
-import {
-  Badge,
-  GainAmount,
-  GainPercent,
-} from "@wealthfolio/ui";
 import { DataTableColumnHeader } from "@/components/ui/data-table/data-table-column-header";
-import { DataTableToolbar } from "@/components/ui/data-table/data-table-toolbar";
 import { DataTablePagination } from "@/components/ui/data-table/data-table-pagination";
+import { DataTableToolbar } from "@/components/ui/data-table/data-table-toolbar";
 import { Icons } from "@/components/ui/icons";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { OpenPosition } from "@/pages/trading/types";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -24,6 +26,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { Badge, GainAmount, GainPercent } from "@wealthfolio/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -33,9 +36,13 @@ interface OpenTradesTableProps {
   showSearch?: boolean;
 }
 
-export function OpenTradesTable({ positions, showFilters = true, showSearch = true }: OpenTradesTableProps) {
+export function OpenTradesTable({
+  positions,
+  showFilters = true,
+  showSearch = true,
+}: OpenTradesTableProps) {
   const { t } = useTranslation("trading");
-  
+
   // Get unique accounts for filter
   const uniqueAccounts = useMemo(() => {
     const accountMap = new Map<string, string>();
@@ -92,26 +99,26 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
         accessorKey: "quantity",
         header: ({ column }) => (
           <DataTableColumnHeader
-            className="justify-end"
+            className="justify-center"
             column={column}
             title={t("components.openTrades.table.quantity")}
           />
         ),
         cell: ({ row }) => (
-          <div className="text-right">{row.original.quantity.toLocaleString()}</div>
+          <div className="text-center">{row.original.quantity.toLocaleString()}</div>
         ),
       },
       {
         accessorKey: "averageCost",
         header: ({ column }) => (
           <DataTableColumnHeader
-            className="justify-end"
+            className="justify-center"
             column={column}
             title={t("components.openTrades.table.avgCost")}
           />
         ),
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="text-center">
             {row.original.averageCost.toLocaleString("en-US", {
               style: "currency",
               currency: row.original.currency,
@@ -123,13 +130,13 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
         accessorKey: "currentPrice",
         header: ({ column }) => (
           <DataTableColumnHeader
-            className="justify-end"
+            className="justify-center"
             column={column}
             title={t("components.openTrades.table.current")}
           />
         ),
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="text-center">
             {row.original.currentPrice.toLocaleString("en-US", {
               style: "currency",
               currency: row.original.currency,
@@ -141,13 +148,13 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
         accessorKey: "unrealizedPL",
         header: ({ column }) => (
           <DataTableColumnHeader
-            className="justify-end"
+            className="justify-center"
             column={column}
             title={t("components.openTrades.table.pl")}
           />
         ),
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="flex justify-center">
             <GainAmount value={row.original.unrealizedPL} currency={row.original.currency} />
           </div>
         ),
@@ -156,13 +163,13 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
         accessorKey: "unrealizedReturnPercent",
         header: ({ column }) => (
           <DataTableColumnHeader
-            className="justify-end"
+            className="justify-center"
             column={column}
             title={t("components.openTrades.table.returnPercent")}
           />
         ),
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="flex justify-center">
             <GainPercent value={row.original.unrealizedReturnPercent} />
           </div>
         ),
@@ -171,7 +178,7 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
         accessorKey: "daysOpen",
         header: ({ column }) => (
           <DataTableColumnHeader
-            className="justify-center"
+            className="justify-center w-full text-center"
             column={column}
             title={t("components.openTrades.table.days")}
           />
@@ -200,7 +207,9 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
   );
 
   const [rowSelection, setRowSelection] = useState({});
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    currentPrice: false,
+  });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([{ id: "daysOpen", desc: false }]);
 
@@ -234,11 +243,11 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
   return (
     <div className="flex h-full flex-col space-y-4">
       <div className="shrink-0">
-        <DataTableToolbar 
-          table={table} 
-          searchBy={showSearch ? "symbol" : undefined} 
-          filters={showFilters ? filters : undefined} 
-          showColumnToggle={true} 
+        <DataTableToolbar
+          table={table}
+          searchBy={showSearch ? "symbol" : undefined}
+          filters={showFilters ? filters : undefined}
+          showColumnToggle={true}
         />
       </div>
       <div className="min-h-0 flex-1 rounded-md border">
@@ -249,7 +258,9 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   );
                 })}
@@ -261,7 +272,9 @@ export function OpenTradesTable({ positions, showFilters = true, showSearch = tr
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))
