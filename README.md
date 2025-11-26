@@ -46,7 +46,7 @@ Data Storage. No Subscriptions, No Cloud.
 
 Visit the app website at [Wealthfolio App](https://wealthfolio.app/).
 
-![Screenshot](public/screenshot.png)
+![Screenshot](public/screenshot.webp)
 
 ### ✨ Key Features
 
@@ -61,6 +61,8 @@ Visit the app website at [Wealthfolio App](https://wealthfolio.app/).
 - **🧩 Extensible** - Powerful addon system for custom functionality
 - **🌍 Multi-Currency** - Support for multiple currencies with exchange rate
   management
+- **🌐 Multi-Language** - Full internationalization support (English,
+  Vietnamese)
 - **📱 Cross-Platform** - Available on Windows, macOS, and Linux
 
 ### 🧩 Addon System
@@ -78,8 +80,7 @@ functionality:
   data
 - **🔐 Secrets Management** - Secure storage for API keys and sensitive data
 
-**Get started building addons:**
-[Addon Developer Guide](docs/addons/addon-developer-guide.md)
+**Get started building addons:** See the [Addon Documentation Hub](docs/addons/index.md)
 
 Documentation for all Activity types, including the required form fields, is
 available in
@@ -95,27 +96,25 @@ See [ROADMAP.md](./ROADMAP.md).
 
 - **[Activity Types](docs/activities/activity-types.md)** - Complete guide to
   all supported activity types and their required fields
+- **[Internationalization Guide](docs/i18n-guide.md)** - Developer guide for
+  multi-language support and translations
+- **[Translation Guide](docs/translation-guide.md)** - How to contribute
+  translations for new languages
 - **[Roadmap](ROADMAP.md)** - Future plans and development roadmap
 
 ### Addon Development
 
 - **[Addon Documentation Hub](docs/addons/index.md)** - Main entry point for
   addon development
-- **[Developer Guide](docs/addons/addon-developer-guide.md)** - Comprehensive
-  guide from setup to advanced patterns
+- **[Getting Started](docs/addons/addon-getting-started.md)** - Guide to get
+  started with addon development
 - **[API Reference](docs/addons/addon-api-reference.md)** - Complete API
   documentation with examples
-- **[Permission System](docs/addons/addon-permissions.md)** - Security and
-  permission system guide
-- **[Examples & Tutorials](docs/addons/addon-examples.md)** - Practical examples
-  and step-by-step tutorials
+- **[Architecture](docs/addons/addon-architecture.md)** - Design patterns and
+  architecture guide
 
 ### Quick Links
 
-- 🚀
-  **[Get Started with Addons](docs/addons/addon-developer-guide.md#quick-start)**
-- 🔒
-  **[Security Best Practices](docs/addons/addon-permissions.md#security-best-practices)**
 - 💡 **[Example Addons](addons/)** - Browse sample addons in the repository
 - 🛠️ **[Development Tools](packages/addon-dev-tools/)** - CLI tools for addon
   development
@@ -303,8 +302,8 @@ The latest server build is published to Docker Hub.
 docker pull afadil/wealthfolio:latest
 ```
 
-After pulling, use `afadil/wealthfolio:latest` in the run commands below. If
-you build the image locally, swap the image name back to `wealthfolio`.
+After pulling, use `afadil/wealthfolio:latest` in the run commands below. If you
+build the image locally, swap the image name back to `wealthfolio`.
 
 ### Building the Image
 
@@ -528,18 +527,49 @@ Your addon will be automatically discovered and loaded with hot reload support!
 Check out the [addons/](addons/) directory for sample addons including:
 
 - **Goal Progress Tracker**: Visual goal tracking with calendar like interface
-- More examples in the [documentation](docs/addons/addon-examples.md)
+- **Investment Fees Tracker**: Track and analyze investment fees
 
 ### Resources
 
-- **[Complete Developer Guide](docs/addons/addon-developer-guide.md)** -
-  Everything you need to know
+- **[Getting Started Guide](docs/addons/addon-getting-started.md)** -
+  Everything you need to know to start building addons
 - **[API Reference](docs/addons/addon-api-reference.md)** - Full API
   documentation
-- **[Permission System](docs/addons/addon-permissions.md)** - Security and
-  permissions guide
-- **[Examples & Tutorials](docs/addons/addon-examples.md)** - Step-by-step
-  tutorials
+- **[Architecture Guide](docs/addons/addon-architecture.md)** - Design patterns
+  and best practices
+
+## Language Support
+
+Wealthfolio is available in multiple languages with full internationalization
+support.
+
+### Supported Languages
+
+- **English** (en) 🇬🇧
+- **Tiếng Việt** (vi) 🇻🇳
+
+### Switching Languages
+
+To change the application language:
+
+1. Open **Settings** from the sidebar
+2. Navigate to **General Settings**
+3. Select your preferred language from the **Language** dropdown
+4. The interface will update immediately
+
+All UI elements, including menus, buttons, forms, and messages, will be
+displayed in your selected language.
+
+### Contributing Translations
+
+We welcome contributions for new languages! If you'd like to help translate
+Wealthfolio:
+
+- See the **[Translation Guide](docs/translation-guide.md)** for step-by-step
+  instructions
+- Check the **[i18n Developer Guide](docs/i18n-guide.md)** for technical details
+- Join our [Discord](https://discord.gg/WDMCY6aPWK) to coordinate with other
+  translators
 
 ## Technologies Used
 

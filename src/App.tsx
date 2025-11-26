@@ -7,6 +7,8 @@ import { useState } from "react";
 import { PrivacyProvider } from "./context/privacy-context";
 import { LoginPage } from "./pages/auth/login-page";
 import { AppRoutes } from "./routes";
+// Import i18n to ensure it's initialized
+import "@/locales";
 
 function App() {
   const [queryClient] = useState(

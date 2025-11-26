@@ -1,17 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
 import { calculateDepositsForLimit, getContributionLimit } from "@/commands/contribution-limits";
-import { QueryKeys } from "@/lib/query-keys";
-import { ContributionLimit, DepositsCalculation } from "@/lib/types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PrivacyAmount } from "@wealthfolio/ui";
+import { QueryKeys } from "@/lib/query-keys";
+import { ContributionLimit, DepositsCalculation } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
+import { Icons, PrivacyAmount } from "@wealthfolio/ui";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 interface AccountContributionLimitProps {
   accountId: string;
 }
 
 export function AccountContributionLimit({ accountId }: AccountContributionLimitProps) {
+  const { t } = useTranslation(["accounts"]);
   const currentYear = new Date().getFullYear();
 
   const { data: allLimits, isLoading: isLimitsLoading } = useQuery<ContributionLimit[], Error>({
@@ -37,17 +40,24 @@ export function AccountContributionLimit({ accountId }: AccountContributionLimit
 
   if (!limitForAccount) {
     return (
-      <Card className="dark:border-primary/20 dark:bg-primary/20 border-none bg-indigo-100 p-6 shadow-sm">
+      <Card className="border-muted bg-muted/70 border-none p-6 shadow-none">
         <div className="flex items-center justify-between text-sm">
           <span>
-            You&apos;ve contributed{" "}
+            {t("contributionLimit.contributedSoFar")}{" "}
             <span className="font-semibold">
               <PrivacyAmount
                 value={accountDeposit?.convertedAmount ?? 0}
                 currency={deposits?.baseCurrency ?? "USD"}
               />
             </span>{" "}
-            so far in {currentYear}. There&apos;s no contribution limit set for this account.
+            so far in {currentYear}. There&apos;s no contribution limit set for this account.{" "}
+            <Link
+              to="/settings/contribution-limits"
+              className="text-primary inline-flex items-center gap-1 font-semibold"
+            >
+              Set limit
+              <Icons.ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </span>
         </div>
       </Card>
@@ -62,6 +72,7 @@ export function AccountContributionLimit({ accountId }: AccountContributionLimit
         deposit={accountDeposit}
         totalDeposits={deposits?.total ?? 0}
         baseCurrency={deposits?.baseCurrency ?? "USD"}
+        t={t}
       />
     </div>
   );
@@ -72,11 +83,13 @@ function AccountContributionLimitItem({
   deposit,
   totalDeposits,
   baseCurrency,
+  t,
 }: {
   limit: ContributionLimit;
   deposit?: { amount: number; currency: string; convertedAmount: number };
   totalDeposits: number;
   baseCurrency: string;
+  t: any;
 }) {
   const progressValue = totalDeposits ? totalDeposits : 0;
   const progressPercentageNumber =
@@ -95,31 +108,33 @@ function AccountContributionLimitItem({
           <div className="text-sm">
             {isOverLimit ? (
               <span>
-                You&apos;ve contributed{" "}
+                {t("contributionLimit.youHaveContributed")}{" "}
                 <span className="font-semibold">
                   <PrivacyAmount value={deposit?.convertedAmount ?? 0} currency={baseCurrency} />
                 </span>{" "}
-                to this account in {limit.contributionYear}. Your total is{" "}
+                {t("contributionLimit.toThisAccountIn")} {limit.contributionYear}.{" "}
+                {t("contributionLimit.yourTotalIs")}{" "}
                 <span className="text-destructive font-semibold">
                   <PrivacyAmount value={totalDeposits} currency={baseCurrency} />
                 </span>{" "}
-                which is over the{" "}
+                {t("contributionLimit.whichIsOverThe")}{" "}
                 <span className="font-semibold">
                   <PrivacyAmount value={limit.limitAmount} currency={baseCurrency} />
                 </span>{" "}
-                limit.
+                {t("contributionLimit.limit")}
               </span>
             ) : (
               <span>
-                You&apos;ve contributed{" "}
+                {t("contributionLimit.youHaveContributed")}{" "}
                 <span className="font-semibold">
                   <PrivacyAmount value={deposit?.convertedAmount ?? 0} currency={baseCurrency} />
                 </span>{" "}
-                to this account in {limit.contributionYear}. Your total contribution towards the{" "}
+                {t("contributionLimit.toThisAccountIn")} {limit.contributionYear}.{" "}
+                {t("contributionLimit.yourTotalContribution")}{" "}
                 <span className="font-semibold">
                   <PrivacyAmount value={limit.limitAmount} currency={baseCurrency} />
                 </span>{" "}
-                {limit.groupName} limit is{" "}
+                {limit.groupName} {t("contributionLimit.limitIs")}{" "}
                 <span className="font-semibold">
                   <PrivacyAmount value={totalDeposits} currency={baseCurrency} />
                 </span>

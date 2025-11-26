@@ -10,20 +10,23 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { InputTags } from "@/components/ui/tag-input";
 import { useHapticFeedback } from "@/hooks";
 import { useQuoteHistory } from "@/hooks/use-quote-history";
-import { useSyncMarketDataMutation } from "@/hooks/use-sync-market-data";
 import { DataSource, PORTFOLIO_ACCOUNT_ID } from "@/lib/constants";
 import { QueryKeys } from "@/lib/query-keys";
 import { Asset, Country, Holding, Quote, Sector } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatedToggleGroup, Page, PageContent, PageHeader, SwipableView } from "@wealthfolio/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AssetDetailCard from "./asset-detail-card";
 import AssetHistoryCard from "./asset-history-card";
 import AssetLotsTable from "./asset-lots-table";
+import { AssetActivitiesTable } from "./components/asset-activities-table";
+import { AssetOpenPositions } from "./components/asset-open-positions";
+import { useAssetPerformance } from "./hooks/use-asset-performance";
+import { useAssetProfileMutations } from "./hooks/use-asset-profile-mutations";
+import { useQuoteMutations } from "./hooks/use-quote-mutations";
 import QuoteHistoryTable from "./quote-history-table";
-import { useAssetProfileMutations } from "./use-asset-profile-mutations";
-import { useQuoteMutations } from "./use-quote-mutations";
 
 interface AssetProfileFormData {
   name: string;
@@ -56,13 +59,15 @@ interface AssetDetailData {
   } | null;
 }
 
-type AssetTab = "overview" | "lots" | "history";
+type AssetTab = "overview" | "lots" | "history" | "activities";
 
 export const AssetProfilePage = () => {
+  const { t } = useTranslation(["assets", "activity"]);
   const { symbol: encodedSymbol = "" } = useParams<{ symbol: string }>();
   const symbol = decodeURIComponent(encodedSymbol);
   const location = useLocation();
   const navigate = useNavigate();
+  const backTarget = location.state?.from ?? "/holdings?tab=holdings";
   const queryParams = new URLSearchParams(location.search);
   const defaultTab = (queryParams.get("tab") as AssetTab) ?? "overview";
   const [activeTab, setActiveTab] = useState<AssetTab>(defaultTab);
@@ -108,66 +113,124 @@ export const AssetProfilePage = () => {
     enabled: !!symbol,
   });
 
+  // Use the new hook to get dividend-adjusted performance data
+  const { openPositions, totalDividends, isLoading: isPerformanceLoading } = useAssetPerformance(symbol);
+
   const quote = useMemo(() => {
     return quoteHistory?.at(-1) ?? null;
   }, [quoteHistory]);
 
   const { updateAssetProfileMutation, updateAssetDataSourceMutation } = useAssetProfileMutations();
   const { saveQuoteMutation, deleteQuoteMutation } = useQuoteMutations(symbol);
-  const syncMarketDataMutation = useSyncMarketDataMutation();
 
   useEffect(() => {
+    const instrument = holding?.instrument;
+    const asset = assetProfile;
+
+    // Helper to safely parse JSON or return array
+    const parseSectors = (data: string | Sector[] | null | undefined): Sector[] => {
+      if (!data) return [];
+      if (typeof data === "string") {
+        try {
+          return JSON.parse(data) as Sector[];
+        } catch {
+          return [];
+        }
+      }
+      return data;
+    };
+
+    const parseCountries = (data: string | Country[] | null | undefined): Country[] => {
+      if (!data) return [];
+      if (typeof data === "string") {
+        try {
+          return JSON.parse(data) as Country[];
+        } catch {
+          return [];
+        }
+      }
+      return data;
+    };
+
     setFormData({
-      name: holding?.instrument?.name ?? "",
-      sectors: holding?.instrument?.sectors ?? [],
-      countries: holding?.instrument?.countries ?? [],
-      assetSubClass: holding?.instrument?.assetSubclass ?? "",
-      assetClass: holding?.instrument?.assetClass ?? "",
-      notes: holding?.instrument?.notes ?? "",
-      dataSource: (holding?.instrument?.dataSource as DataSource) ?? DataSource.YAHOO,
+      name: instrument?.name ?? asset?.name ?? "",
+      sectors: parseSectors(instrument?.sectors ?? asset?.sectors),
+      countries: parseCountries(instrument?.countries ?? asset?.countries),
+      assetSubClass: instrument?.assetSubclass ?? asset?.assetSubClass ?? "",
+      assetClass: instrument?.assetClass ?? asset?.assetClass ?? "",
+      notes: instrument?.notes ?? asset?.notes ?? "",
+      dataSource: (instrument?.dataSource ?? asset?.dataSource ?? DataSource.YAHOO) as DataSource,
     });
-  }, [holding]);
+  }, [holding, assetProfile]);
 
   const profile = useMemo(() => {
-    if (!holding?.instrument) return null;
+    const instrument = holding?.instrument;
+    const asset = assetProfile;
+
+    if (!instrument && !asset) return null;
+
     const totalGainAmount = holding?.totalGain?.local ?? 0;
     const totalGainPercent = holding?.totalGainPct ?? 0;
     const calculatedAt = holding?.asOfDate;
 
     return {
-      id: holding.instrument.id,
-      symbol: holding.instrument.symbol,
-      name: holding.instrument.name ?? "-",
+      id: instrument?.id ?? asset?.id ?? "",
+      symbol: instrument?.symbol ?? asset?.symbol ?? symbol,
+      name: instrument?.name ?? asset?.name ?? "-",
       isin: null,
       assetType: null,
       symbolMapping: null,
-      assetClass: holding.instrument.assetClass ?? "",
-      assetSubClass: holding.instrument.assetSubclass ?? "",
-      notes: holding.instrument.notes ?? null,
-      countries: JSON.stringify(holding.instrument.countries ?? []),
+      assetClass: instrument?.assetClass ?? asset?.assetClass ?? "",
+      assetSubClass: instrument?.assetSubclass ?? asset?.assetSubClass ?? "",
+      notes: instrument?.notes ?? asset?.notes ?? null,
+      countries:
+        typeof instrument?.countries === "string"
+          ? instrument.countries
+          : JSON.stringify(instrument?.countries ?? asset?.countries ?? []),
       categories: null,
       classes: null,
       attributes: null,
-      createdAt: holding.openDate ? new Date(holding.openDate) : new Date(),
+      createdAt: holding?.openDate ? new Date(holding.openDate) : new Date(),
       updatedAt: new Date(),
-      currency: holding.instrument.currency ?? "USD",
-      dataSource: (holding.instrument.dataSource as DataSource) ?? DataSource.YAHOO,
-      sectors: JSON.stringify(holding.instrument.sectors ?? []),
+      currency: instrument?.currency ?? asset?.currency ?? "USD",
+      dataSource: (instrument?.dataSource ?? asset?.dataSource ?? DataSource.YAHOO) as DataSource,
+      sectors:
+        typeof instrument?.sectors === "string"
+          ? instrument.sectors
+          : JSON.stringify(instrument?.sectors ?? asset?.sectors ?? []),
       url: null,
       marketPrice: quote?.close ?? 0,
       totalGainAmount,
       totalGainPercent,
       calculatedAt,
     };
-  }, [holding, quote]);
+  }, [holding, assetProfile, quote, symbol]);
 
   const symbolHolding = useMemo((): AssetDetailData | null => {
     if (!holding) return null;
 
+    // Adjust metrics to include dividends as return of capital/total return
+    // Adjusted Cost Basis = Original Cost Basis - Total Dividends
+    // Adjusted Total Return = (Market Value - Adjusted Cost Basis)
+    //                       = Market Value - (Original Cost Basis - Total Dividends)
+    //                       = (Market Value - Original Cost Basis) + Total Dividends
+
+    const originalCostBasis = holding.costBasis?.local ?? 0;
+    const adjustedCostBasis = Math.max(0, originalCostBasis - totalDividends);
+
     const averageCostPrice =
-      holding.costBasis?.local && holding.quantity !== 0
-        ? holding.costBasis.local / holding.quantity
+      adjustedCostBasis && holding.quantity !== 0
+        ? adjustedCostBasis / holding.quantity
         : 0;
+
+    const originalTotalReturn = holding.totalGain?.local ?? 0;
+    const adjustedTotalReturn = originalTotalReturn + totalDividends;
+
+    // Recalculate return percent based on adjusted cost basis
+    // If cost basis is reduced to 0, return is infinite (or handled gracefully)
+    const adjustedTotalReturnPercent = adjustedCostBasis > 0
+      ? adjustedTotalReturn / adjustedCostBasis
+      : 0;
 
     const quoteData = quote
       ? {
@@ -187,20 +250,20 @@ export const AssetProfilePage = () => {
     return {
       numShares: Number(holding.quantity),
       marketValue: Number(holding.marketValue.local ?? 0),
-      costBasis: Number(holding.costBasis?.local ?? 0),
-      averagePrice: Number(averageCostPrice),
+      costBasis: Number(adjustedCostBasis), // Use adjusted cost basis
+      averagePrice: Number(averageCostPrice), // Use adjusted average price
       portfolioPercent: Number(holding.weight ?? 0),
       todaysReturn: quoteData?.todaysReturn ?? null,
       todaysReturnPercent: quoteData?.todaysReturnPercent ?? null,
-      totalReturn: Number(holding.totalGain?.local ?? 0),
-      totalReturnPercent: Number(holding.totalGainPct ?? 0),
+      totalReturn: Number(adjustedTotalReturn), // Use adjusted total return
+      totalReturnPercent: Number(adjustedTotalReturnPercent), // Use adjusted total return percent
       currency: holding.localCurrency ?? holding.instrument?.currency ?? "USD",
       quote: quoteData?.quote ?? null,
     };
-  }, [holding, quote]);
+  }, [holding, quote, totalDividends]);
 
   const handleSave = useCallback(() => {
-    if (!holding) return;
+    if (!profile) return;
     updateAssetProfileMutation.mutate({
       symbol,
       name: formData.name,
@@ -211,10 +274,10 @@ export const AssetProfilePage = () => {
       assetClass: formData.assetClass,
     });
     setIsEditing(false);
-  }, [holding, symbol, formData, updateAssetProfileMutation]);
+  }, [profile, symbol, formData, updateAssetProfileMutation]);
 
   const handleSaveTitle = useCallback(() => {
-    if (!holding) return;
+    if (!profile) return;
     updateAssetProfileMutation.mutate({
       symbol,
       name: formData.name,
@@ -224,37 +287,66 @@ export const AssetProfilePage = () => {
       assetSubClass: formData.assetSubClass,
       assetClass: formData.assetClass,
     });
-  }, [holding, symbol, formData, updateAssetProfileMutation]);
+  }, [profile, symbol, formData, updateAssetProfileMutation]);
 
   const handleCancel = useCallback(() => {
     setIsEditing(false);
+    const instrument = holding?.instrument;
+    const asset = assetProfile;
+
+    // Helper to safely parse JSON or return array
+    const parseSectors = (data: string | Sector[] | null | undefined): Sector[] => {
+      if (!data) return [];
+      if (typeof data === "string") {
+        try {
+          return JSON.parse(data) as Sector[];
+        } catch {
+          return [];
+        }
+      }
+      return data;
+    };
+
+    const parseCountries = (data: string | Country[] | null | undefined): Country[] => {
+      if (!data) return [];
+      if (typeof data === "string") {
+        try {
+          return JSON.parse(data) as Country[];
+        } catch {
+          return [];
+        }
+      }
+      return data;
+    };
+
     setFormData({
-      name: holding?.instrument?.name ?? "",
-      sectors: holding?.instrument?.sectors ?? [],
-      countries: holding?.instrument?.countries ?? [],
-      assetSubClass: holding?.instrument?.assetSubclass ?? "",
-      assetClass: holding?.instrument?.assetClass ?? "",
-      notes: holding?.instrument?.notes ?? "",
-      dataSource: (holding?.instrument?.dataSource as DataSource) ?? DataSource.YAHOO,
+      name: instrument?.name ?? asset?.name ?? "",
+      sectors: parseSectors(instrument?.sectors ?? asset?.sectors),
+      countries: parseCountries(instrument?.countries ?? asset?.countries),
+      assetSubClass: instrument?.assetSubclass ?? asset?.assetSubClass ?? "",
+      assetClass: instrument?.assetClass ?? asset?.assetClass ?? "",
+      notes: instrument?.notes ?? asset?.notes ?? "",
+      dataSource: (instrument?.dataSource ?? asset?.dataSource ?? DataSource.YAHOO) as DataSource,
     });
-  }, [holding]);
+  }, [holding, assetProfile]);
 
   // Build toggle items dynamically based on available data
   const toggleItems = useMemo(() => {
     const items: { value: AssetTab; label: string }[] = [];
 
     if (profile) {
-      items.push({ value: "overview", label: "Overview" });
+      items.push({ value: "overview", label: t("assets:profile.tabs.overview") });
     }
 
     if (holding?.lots && holding.lots.length > 0) {
-      items.push({ value: "lots", label: "Lots" });
+      items.push({ value: "lots", label: t("assets:profile.tabs.lots") });
     }
 
-    items.push({ value: "history", label: "Quotes" });
+    items.push({ value: "activities", label: t("activity:page.title", { defaultValue: "Activities" }) });
+    items.push({ value: "history", label: t("assets:profile.tabs.quotes") });
 
     return items;
-  }, [profile, holding]);
+  }, [profile, holding, t]);
 
   // Build swipable tabs for mobile
   const swipableTabs = useMemo(() => {
@@ -262,7 +354,7 @@ export const AssetProfilePage = () => {
 
     if (profile) {
       tabs.push({
-        name: "Overview",
+        name: t("assets:profile.tabs.overview"),
         content: (
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 pt-0 md:grid-cols-3">
@@ -282,7 +374,7 @@ export const AssetProfilePage = () => {
 
             <div className="group relative">
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold">About</h3>
+                <h3 className="text-lg font-bold">{t("assets:profile.about")}</h3>
                 {!isEditing && (
                   <Button
                     variant="ghost"
@@ -301,7 +393,7 @@ export const AssetProfilePage = () => {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, assetClass: e.target.value }))
                     }
-                    placeholder="Enter asset class"
+                    placeholder={t("assets:profile.placeholders.assetClass")}
                     className="w-[180px]"
                   />
                 ) : (
@@ -317,7 +409,7 @@ export const AssetProfilePage = () => {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, assetSubClass: e.target.value }))
                     }
-                    placeholder="Enter sub-class"
+                    placeholder={t("assets:profile.placeholders.subClass")}
                     className="w-[180px]"
                   />
                 ) : (
@@ -335,7 +427,7 @@ export const AssetProfilePage = () => {
                     value={formData.sectors.map(
                       (s) => `${s.name}:${s.weight <= 1 ? (s.weight * 100).toFixed(0) : s.weight}%`,
                     )}
-                    placeholder="sector:weight"
+                    placeholder={t("assets:profile.placeholders.sector")}
                     onChange={(values) =>
                       setFormData((prev) => ({
                         ...prev,
@@ -365,7 +457,7 @@ export const AssetProfilePage = () => {
                 )}
                 {isEditing ? (
                   <InputTags
-                    placeholder="country:weight"
+                    placeholder={t("assets:profile.placeholders.country")}
                     value={formData.countries.map(
                       (c) => `${c.name}:${c.weight <= 1 ? (c.weight * 100).toFixed(0) : c.weight}%`,
                     )}
@@ -417,13 +509,13 @@ export const AssetProfilePage = () => {
                   <textarea
                     className="mt-12 w-full rounded-md border border-neutral-200 p-2 text-sm"
                     value={formData.notes}
-                    placeholder="Symbol/Company description"
+                    placeholder={t("assets:profile.placeholders.description")}
                     rows={6}
                     onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                   />
                 ) : (
                   <p className="text-muted-foreground text-sm font-light">
-                    {formData.notes || "No description available."}
+                    {formData.notes || t("assets:profile.noDescription")}
                   </p>
                 )}
               </div>
@@ -435,7 +527,7 @@ export const AssetProfilePage = () => {
 
     if (holding?.lots && holding.lots.length > 0 && profile) {
       tabs.push({
-        name: "Lots",
+        name: t("assets:profile.tabs.lots"),
         content: (
           <AssetLotsTable
             lots={holding.lots}
@@ -446,8 +538,15 @@ export const AssetProfilePage = () => {
       });
     }
 
+    if (profile) {
+      tabs.push({
+        name: t("activity:page.title", { defaultValue: "Activities" }),
+        content: <AssetActivitiesTable symbol={symbol} />,
+      });
+    }
+
     tabs.push({
-      name: "Quotes",
+      name: t("assets:profile.tabs.quotes"),
       content: (
         <QuoteHistoryTable
           data={quoteHistory ?? []}
@@ -497,18 +596,10 @@ export const AssetProfilePage = () => {
     symbol,
     handleCancel,
     handleSave,
+    t,
   ]);
 
   const isLoading = isHoldingLoading || isQuotesLoading || isAssetProfileLoading;
-
-  const handleRefreshQuotes = useCallback(() => {
-    triggerHaptic();
-    syncMarketDataMutation.mutate([symbol]);
-  }, [symbol, syncMarketDataMutation, triggerHaptic]);
-
-  const handleBack = useCallback(() => {
-    navigate(-1);
-  }, [navigate]);
 
   if (isLoading)
     return (
@@ -524,22 +615,9 @@ export const AssetProfilePage = () => {
     return (
       <Page>
         <PageHeader
-          heading="Quote History"
+          heading={t("assets:profile.quoteHistory")}
           text={symbol}
-          onBack={handleBack}
-          actions={
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              onClick={handleRefreshQuotes}
-              disabled={syncMarketDataMutation.isPending}
-              title="Refresh Quote"
-            >
-              <Icons.Refresh
-                className={`size-4 ${syncMarketDataMutation.isPending ? "animate-spin" : ""}`}
-              />
-            </Button>
-          }
+          onBack={() => navigate(backTarget)}
         />
         <PageContent>
           <QuoteHistoryTable
@@ -579,38 +657,40 @@ export const AssetProfilePage = () => {
     );
   }
 
-  // Handle case where loading finished but we have neither profile/holding nor quote data
-  if (!profile && !holding && (!quoteHistory || quoteHistory.length === 0)) {
+  // Handle case where loading finished but we have no asset data at all
+  if (!profile && (!quoteHistory || quoteHistory.length === 0)) {
     return (
       <Page>
         <PageHeader
           heading={symbol}
-          text={`Error loading data for ${symbol}`}
-          onBack={handleBack}
+          text={`${t("assets:profile.errorLoading")} ${symbol}`}
+          onBack={() => navigate(backTarget)}
         />
         <PageContent>
-          <p>
-            Could not load necessary information for this symbol. Please check the symbol or try
-            again later.
-          </p>
-          {isHoldingError && <p className="text-sm text-red-500">Holding fetch error.</p>}
-          {isQuotesError && <p className="text-sm text-red-500">Quote fetch error.</p>}
+          <p>{t("assets:profile.errorMessage")}</p>
+          {isHoldingError && (
+            <p className="text-sm text-red-500">{t("assets:profile.errors.holding")}</p>
+          )}
+          {isQuotesError && (
+            <p className="text-sm text-red-500">{t("assets:profile.errors.quote")}</p>
+          )}
           {isAssetProfileError && (
-            <p className="text-sm text-red-500">Asset profile fetch error.</p>
+            <p className="text-sm text-red-500">{t("assets:profile.errors.profile")}</p>
           )}
         </PageContent>
       </Page>
     );
   }
-
   return (
     <Page>
       <PageHeader>
         <div className="flex w-full flex-col gap-3 md:flex-row md:items-center">
           <div className="flex min-w-0 flex-1 items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={handleBack}>
-              <Icons.ArrowLeft className="h-8 w-8 md:h-9 md:w-9" />
-            </Button>
+            <Link to={location.state?.from ?? "/holdings?tab=holdings"}>
+              <Button variant="ghost" size="icon">
+                <Icons.ArrowLeft className="h-8 w-8 md:h-9 md:w-9" />
+              </Button>
+            </Link>
             {(profile?.symbol ?? holding?.instrument?.symbol) && (
               <TickerAvatar
                 symbol={profile?.symbol ?? holding?.instrument?.symbol ?? symbol}
@@ -621,7 +701,7 @@ export const AssetProfilePage = () => {
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter asset name"
+                placeholder={t("assets:profile.placeholders.assetName")}
                 className="font-heading text-xl font-bold tracking-tight"
                 onBlur={() => {
                   setIsEditingTitle(false);
@@ -636,7 +716,7 @@ export const AssetProfilePage = () => {
                     setIsEditingTitle(false);
                     setFormData((prev) => ({
                       ...prev,
-                      name: holding?.instrument?.name ?? "",
+                      name: holding?.instrument?.name ?? assetProfile?.name ?? "",
                     }));
                   }
                 }}
@@ -670,18 +750,7 @@ export const AssetProfilePage = () => {
               </div>
             )}
           </div>
-          <div className="hidden md:flex md:items-center md:gap-2">
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              onClick={handleRefreshQuotes}
-              disabled={syncMarketDataMutation.isPending}
-              title="Refresh Quote"
-            >
-              <Icons.Refresh
-                className={`size-4 ${syncMarketDataMutation.isPending ? "animate-spin" : ""}`}
-              />
-            </Button>
+          <div className="hidden md:flex">
             <AnimatedToggleGroup
               items={toggleItems}
               value={activeTab}
@@ -741,7 +810,7 @@ export const AssetProfilePage = () => {
 
               <div className="group relative">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold">About</h3>
+                  <h3 className="text-lg font-bold">{t("assets:profile.about")}</h3>
                   {!isEditing && (
                     <Button
                       variant="ghost"
@@ -760,7 +829,7 @@ export const AssetProfilePage = () => {
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, assetClass: e.target.value }))
                       }
-                      placeholder="Enter asset class"
+                      placeholder={t("assets:profile.placeholders.assetClass")}
                       className="w-[180px]"
                     />
                   ) : (
@@ -776,7 +845,7 @@ export const AssetProfilePage = () => {
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, assetSubClass: e.target.value }))
                       }
-                      placeholder="Enter sub-class"
+                      placeholder={t("assets:profile.placeholders.subClass")}
                       className="w-[180px]"
                     />
                   ) : (
@@ -794,7 +863,7 @@ export const AssetProfilePage = () => {
                         (s) =>
                           `${s.name}:${s.weight <= 1 ? (s.weight * 100).toFixed(0) : s.weight}%`,
                       )}
-                      placeholder="sector:weight"
+                      placeholder={t("assets:profile.placeholders.sector")}
                       onChange={(values) =>
                         setFormData((prev) => ({
                           ...prev,
@@ -812,7 +881,7 @@ export const AssetProfilePage = () => {
                         <Badge
                           variant="secondary"
                           key={sector.name}
-                          className="dark:text-primary-foreground m-1 cursor-help bg-blue-100 uppercase"
+                          className="dark:text-primary-foreground m-1 cursor-help bg-indigo-100 uppercase"
                           title={`${sector.name}: ${sector.weight <= 1 ? (sector.weight * 100).toFixed(2) : sector.weight}%`}
                         >
                           {sector.name}
@@ -825,7 +894,7 @@ export const AssetProfilePage = () => {
                   )}
                   {isEditing ? (
                     <InputTags
-                      placeholder="country:weight"
+                      placeholder={t("assets:profile.placeholders.country")}
                       value={formData.countries.map(
                         (c) =>
                           `${c.name}:${c.weight <= 1 ? (c.weight * 100).toFixed(0) : c.weight}%`,
@@ -884,17 +953,19 @@ export const AssetProfilePage = () => {
                     <textarea
                       className="mt-12 w-full rounded-md border border-neutral-200 p-2 text-sm"
                       value={formData.notes}
-                      placeholder="Symbol/Company description"
+                      placeholder={t("assets:profile.placeholders.description")}
                       rows={6}
                       onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                     />
                   ) : (
                     <p className="text-muted-foreground text-sm font-light">
-                      {formData.notes || "No description available."}
+                      {formData.notes || t("assets:profile.noDescription")}
                     </p>
                   )}
                 </div>
               </div>
+
+              <AssetOpenPositions openPositions={openPositions} isLoading={isPerformanceLoading} />
             </TabsContent>
           )}
 
@@ -908,6 +979,11 @@ export const AssetProfilePage = () => {
               />
             </TabsContent>
           )}
+
+          {/* Activities Content */}
+          <TabsContent value="activities" className="pt-6">
+            <AssetActivitiesTable symbol={symbol} />
+          </TabsContent>
 
           {/* History/Quotes Content: Requires quoteHistory */}
           <TabsContent value="history" className="space-y-16 pt-6">

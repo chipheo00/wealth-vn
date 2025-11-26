@@ -19,7 +19,7 @@ import { HoldingsForm } from "./components/forms/holdings-form";
 import { IncomeForm } from "./components/forms/income-form";
 import { OtherForm } from "./components/forms/other-form";
 import { newActivitySchema, type NewActivityFormValues } from "./components/forms/schemas";
-import { TradeForm } from "./components/forms/trade-form";
+import { TradeForm } from "../../components/forms/trade-form";
 import { MobileActivityForm } from "./components/mobile-forms/mobile-activity-form";
 import { useActivityMutations } from "./hooks/use-activity-mutations";
 

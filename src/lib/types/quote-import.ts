@@ -34,8 +34,8 @@ export interface QuoteImportState {
 
 export interface QuoteImportActions {
   setFile: (file: File | null) => void;
+  setOverwriteExisting: (overwrite: boolean) => void;
   validateFile: () => Promise<boolean>;
   importQuotes: () => Promise<boolean>;
-  setOverwriteExisting: (overwrite: boolean) => void;
   reset: () => void;
 }

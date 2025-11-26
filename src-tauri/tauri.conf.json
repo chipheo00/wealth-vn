@@ -16,18 +16,16 @@
       "icons/icon.ico"
     ],
     "copyright": "2025 Teymz Inc.",
-  "category": "Finance",
-  "createUpdaterArtifacts": "v1Compatible",
-  "iOS": {
-    "developmentTeam": "DYDJ2RNL5H"
-  }
+    "category": "Finance",
+    "createUpdaterArtifacts": false
   },
   "productName": "Wealthfolio",
   "mainBinaryName": "Wealthfolio",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "identifier": "com.teymz.wealthfolio",
   "plugins": {
     "updater": {
+      "active": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY0RjI4MkRFOUYwRDM3N0QKUldSOU53MmYzb0x5WlBySmErU21wcjVHZFNtMW9zdGcyZTBBRWpVcHRDMkoyKzF1bkQ1VmdKbkYK",
       "endpoints": [
         "https://wealthfolio.app/releases/{{target}}/{{arch}}/{{current_version}}"

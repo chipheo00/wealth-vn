@@ -174,7 +174,7 @@ export function useQuoteImport(): QuoteImportState & QuoteImportActions {
       setIsImporting(false);
       setImportProgress(0);
     }
-  }, [file, overwriteExisting]);
+  }, [file]);
 
   const reset = useCallback(() => {
     setFile(null);
@@ -183,7 +183,6 @@ export function useQuoteImport(): QuoteImportState & QuoteImportActions {
     setIsImporting(false);
     setImportProgress(0);
     setError(null);
-    setOverwriteExisting(false);
   }, []);
 
   return {
@@ -198,9 +197,9 @@ export function useQuoteImport(): QuoteImportState & QuoteImportActions {
 
     // Actions
     setFile,
+    setOverwriteExisting,
     validateFile,
     importQuotes,
-    setOverwriteExisting,
     reset,
   };
 }

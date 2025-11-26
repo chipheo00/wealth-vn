@@ -14,6 +14,7 @@ import {
   PrivacyAmount,
 } from "@wealthfolio/ui";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PrivacyToggle } from "@/components/privacy-toggle";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAccounts } from "@/hooks/use-accounts";
+import { usePortfolioDividends } from "@/hooks/use-portfolio-dividends";
 import { useValuationHistory } from "@/hooks/use-valuation-history";
 import { AccountType } from "@/lib/constants";
 import { QueryKeys } from "@/lib/query-keys";
@@ -82,6 +84,7 @@ const getInitialDateRange = (): DateRange => ({
 const INITIAL_INTERVAL_CODE: TimePeriod = "3M";
 
 const AccountPage = () => {
+  const { t } = useTranslation("accounts");
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(getInitialDateRange());
@@ -137,6 +140,9 @@ const AccountPage = () => {
     id,
   );
 
+  const { data: dividendData } = usePortfolioDividends();
+  const accountDividends = dividendData?.dividendsByAccount.get(id) || 0;
+
   // Calculate gainLossAmount and simpleReturn from valuationHistory
   const { gainLossAmount: frontendGainLossAmount, simpleReturn: frontendSimpleReturn } =
     useMemo(() => {
@@ -154,6 +160,15 @@ const AccountPage = () => {
   }, [valuationHistory]);
 
   const currentValuation = valuationHistory?.[valuationHistory.length - 1];
+
+  const adjustedValuation = useMemo(() => {
+    if (!currentValuation) return currentValuation;
+    // Adjust cost basis by subtracting dividends to show "Net Capital at Risk"
+    return {
+      ...currentValuation,
+      costBasis: Math.max(0, currentValuation.costBasis - accountDividends),
+    };
+  }, [currentValuation, accountDividends]);
 
   const isLoading = isAccountsLoading || isValuationHistoryLoading;
   const isDetailsLoading = isLoading || isPerformanceHistoryLoading;
@@ -188,7 +203,7 @@ const AccountPage = () => {
   return (
     <Page>
       <PageHeader
-        heading={account?.name ?? "Account"}
+        heading={account?.name ?? t("page.accountFallback")}
         text={account?.group ?? account?.currency}
         onBack={() => navigate(-1)}
         actions={
@@ -257,7 +272,7 @@ const AccountPage = () => {
                     <Icons.ChevronDown className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[80vh] p-0">
+                <SheetContent side="bottom" className="mx-1 h-[80vh] rounded-t-4xl p-0">
                   <SheetHeader className="border-border border-b px-6 py-4">
                     <SheetTitle>Switch Account</SheetTitle>
                     <SheetDescription>Choose an account to view</SheetDescription>
@@ -363,16 +378,16 @@ const AccountPage = () => {
                 </CardContent>
               </Card>
 
-              <div className="flex flex-col space-y-4">
-                <AccountMetrics
-                  valuation={currentValuation}
-                  performance={accountPerformance}
-                  className="grow"
-                  isLoading={isDetailsLoading || isPerformanceHistoryLoading}
-                />
-                <AccountContributionLimit accountId={id} />
-              </div>
-            </div>
+          <div className="flex flex-col space-y-4">
+            <AccountMetrics
+              valuation={adjustedValuation}
+              performance={accountPerformance}
+              className="grow"
+              isLoading={isDetailsLoading || isPerformanceHistoryLoading}
+            />
+            <AccountContributionLimit accountId={id} />
+          </div>
+        </div>
 
             <AccountHoldings accountId={id} />
           </>
