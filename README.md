@@ -571,6 +571,39 @@ Wealthfolio:
 - Join our [Discord](https://discord.gg/WDMCY6aPWK) to coordinate with other
   translators
 
+## Language Support
+
+Wealthfolio is available in multiple languages with full internationalization
+support.
+
+### Supported Languages
+
+- **English** (en) 🇬🇧
+- **Tiếng Việt** (vi) 🇻🇳
+
+### Switching Languages
+
+To change the application language:
+
+1. Open **Settings** from the sidebar
+2. Navigate to **General Settings**
+3. Select your preferred language from the **Language** dropdown
+4. The interface will update immediately
+
+All UI elements, including menus, buttons, forms, and messages, will be
+displayed in your selected language.
+
+### Contributing Translations
+
+We welcome contributions for new languages! If you'd like to help translate
+Wealthfolio:
+
+- See the **[Translation Guide](docs/translation-guide.md)** for step-by-step
+  instructions
+- Check the **[i18n Developer Guide](docs/i18n-guide.md)** for technical details
+- Join our [Discord](https://discord.gg/WDMCY6aPWK) to coordinate with other
+  translators
+
 ## Technologies Used
 
 ### Frontend
