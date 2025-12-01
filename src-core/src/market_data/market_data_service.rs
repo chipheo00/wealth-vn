@@ -43,20 +43,18 @@ pub struct MarketDataService {
 #[async_trait]
 impl MarketDataServiceTrait for MarketDataService {
     async fn search_symbol(&self, query: &str) -> Result<Vec<QuoteSummary>> {
-        // 1. Search for existing manual assets in the database
+        // 1. Search for existing local assets in the database (all data sources)
         let all_assets = self.asset_repository.list()?;
         let query_upper = query.to_uppercase();
 
-        let manual_assets: Vec<QuoteSummary> = all_assets
+        let local_assets: Vec<QuoteSummary> = all_assets
             .iter()
             .filter(|asset| {
-                // Only show manual assets
-                asset.data_source == "MANUAL" &&
                 // Match by symbol (exact or starts with)
-                (asset.symbol.to_uppercase() == query_upper ||
-                 asset.symbol.to_uppercase().starts_with(&query_upper) ||
+                asset.symbol.to_uppercase() == query_upper ||
+                asset.symbol.to_uppercase().starts_with(&query_upper) ||
                 // Also match by name if available
-                 asset.name.as_ref().map_or(false, |n| n.to_uppercase().contains(&query_upper)))
+                asset.name.as_ref().map_or(false, |n| n.to_uppercase().contains(&query_upper))
             })
             .map(|asset| QuoteSummary {
                 symbol: asset.symbol.clone(),
@@ -64,20 +62,26 @@ impl MarketDataServiceTrait for MarketDataService {
                 long_name: asset.name.clone().unwrap_or_else(|| asset.symbol.clone()),
                 quote_type: asset.asset_type.clone().unwrap_or_else(|| "EQUITY".to_string()),
                 index: "".to_string(),
-                score: 100.0, // Manual assets get highest priority
-                type_display: "Manual".to_string(),
-                exchange: "MANUAL".to_string(),
+                score: 100.0, // Local assets get highest priority
+                type_display: asset.data_source.clone(), // Preserve original source
+                exchange: asset.data_source.clone(), // Preserve original source (VN-MARKET, MANUAL, etc.)
             })
             .collect();
 
-        // 2. Search all external providers in parallel
+        // 2. If exact match found locally, return immediately (skip external providers)
+        if local_assets.iter().any(|a| a.symbol.to_uppercase() == query_upper) {
+            debug!("Search completed: found exact match '{}' in local assets", query);
+            return Ok(local_assets);
+        }
+
+        // 3. Search all external providers in parallel (only if no exact local match)
         let provider_results_with_ids = self.provider_registry
             .read()
             .await
             .search_ticker_parallel(query)
             .await?;
 
-        // 3. Sort provider results by priority
+        // 4. Sort provider results by priority
         let registry = self.provider_registry.read().await;
         let provider_priority_map: HashMap<String, usize> = registry
             .get_ordered_profiler_ids()
@@ -104,11 +108,11 @@ impl MarketDataServiceTrait for MarketDataService {
             .map(|(_, _, summary)| summary)
             .collect();
 
-        // 4. Combine: manual assets first, then provider results
-        let mut all_results = manual_assets;
+        // 5. Combine: local assets first, then provider results
+        let mut all_results = local_assets;
         all_results.extend(provider_results);
 
-        // 5. Deduplicate by symbol (keep first occurrence = highest priority)
+        // 6. Deduplicate by symbol (keep first occurrence = highest priority)
         let mut seen_symbols = HashSet::new();
         all_results.retain(|item| seen_symbols.insert(item.symbol.clone()));
 
