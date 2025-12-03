@@ -6,13 +6,13 @@ on:
       - main
       - develop
     paths:
-      - 'docs/**'
-      - 'src/**'
-      - 'src-tauri/**'
-      - 'src-server/**'
-      - 'src-core/**'
-      - 'packages/**'
-      - '.github/workflows/docs.yml'
+      - "docs/**"
+      - "src/**"
+      - "src-tauri/**"
+      - "src-server/**"
+      - "src-core/**"
+      - "packages/**"
+      - ".github/workflows/docs.yml"
   pull_request:
     branches:
       - main
@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2
@@ -40,8 +40,8 @@ jobs:
       - name: Setup pnpm store
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
+          node-version: "18"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -59,7 +59,7 @@ jobs:
           du -sh docs/docusaurus/build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: docs-build
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2
