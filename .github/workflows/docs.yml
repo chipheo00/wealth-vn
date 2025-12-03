@@ -52,8 +52,11 @@ jobs:
       - name: Install Docusaurus dependencies
         run: cd docs/docusaurus && pnpm install --no-frozen-lockfile
 
+      - name: Clean Docusaurus cache
+        run: cd docs/docusaurus && rm -rf .docusaurus build node_modules/.cache
+
       - name: Build documentation
-        run: cd docs/docusaurus && NODE_OPTIONS=--openssl-legacy-provider npx docusaurus build
+        run: cd docs/docusaurus && NODE_OPTIONS="--openssl-legacy-provider --max-old-space-size=4096" pnpm build
 
       - name: Check build output
         run: |
