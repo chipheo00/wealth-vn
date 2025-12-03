@@ -46,11 +46,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Clear pnpm cache
+        run: pnpm store prune
+
       - name: Install Docusaurus dependencies
         run: cd docs/docusaurus && pnpm install --no-frozen-lockfile
 
       - name: Build documentation
-        run: cd docs/docusaurus && npx docusaurus build
+        run: cd docs/docusaurus && NODE_OPTIONS=--openssl-legacy-provider npx docusaurus build
 
       - name: Check build output
         run: |
