@@ -1,16 +1,16 @@
 import { RUN_ENV, getRunEnv } from "@/adapters";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/ui/icons";
-import { LogOut, Rocket } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from "@wealthvn/ui";
+import { LogOut, Search } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { type NavLink, type NavigationProps, isPathActive } from "./app-navigation";
@@ -101,10 +101,10 @@ export function AppSidebar({ navigation }: AppSidebarProps) {
                   "text-foreground mb-1 h-12 rounded-md transition-all duration-300 [&_svg]:size-5!",
                   collapsed ? "justify-center" : "justify-start",
                 )}
-                title="Command Launcher (⌘K)"
+                title="Search (⌘K)"
               >
                 <span aria-hidden="true">
-                  <Rocket className="h-5 w-5" />
+                  <Search className="h-5 w-5" />
                 </span>
                 <span
                   className={cn({
@@ -113,7 +113,7 @@ export function AppSidebar({ navigation }: AppSidebarProps) {
                     "block opacity-100": !collapsed,
                   })}
                 >
-                  Launcher
+                  Search
                 </span>
               </Button>
               {navigation?.secondary?.map((item) => (

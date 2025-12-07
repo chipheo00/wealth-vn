@@ -62,8 +62,13 @@ The goal is to transform "WealthFolio" from its current earthy "Flexoki" theme t
 
 ### Phase 2: Core Components & Layout
 1.  **Sidebar**:
-    *   Update background to match the new deep theme (or semi-transparent glass).
-    *   Update active state indicators (glow vs solid block).
+    *   **Visuals**: Update background to match the new deep theme (or semi-transparent glass).
+    *   **Structure**:
+        *   **Top**: Brand/Logo.
+        *   **Middle**: Main Navigation items.
+        *   **Search**: Replace the current "App Launcher" with a dedicated **"Search"** button (Magnifying glass icon) in the sidebar for quick access to command palette/navigation.
+        *   **Bottom**: **Settings** button pinned to the bottom (as currently implemented) but with updated styling.
+    *   **States**: Update active state indicators (glow vs solid block).
 2.  **Dashboard Layout**:
     *   Adjust spacing (`gap-4` -> `gap-6`) for a more airy feel.
     *   Update "Widget" containers to use new Card styles.
