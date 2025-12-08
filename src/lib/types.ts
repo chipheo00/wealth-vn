@@ -162,7 +162,7 @@ export interface QuoteSummary {
   longName: string;
   sector?: string;
   industry?: string;
-  dataSource?: boolean;
+  dataSource?: string; // Data provider (e.g., "YAHOO", "VN_MARKET", "MANUAL")
 }
 
 export interface MarketDataProviderInfo {

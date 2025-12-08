@@ -63,8 +63,9 @@ impl MarketDataServiceTrait for MarketDataService {
                 quote_type: asset.asset_type.clone().unwrap_or_else(|| "EQUITY".to_string()),
                 index: "".to_string(),
                 score: 100.0, // Local assets get highest priority
-                type_display: asset.data_source.clone(), // Preserve original source
-                exchange: asset.data_source.clone(), // Preserve original source (VN-MARKET, MANUAL, etc.)
+                type_display: asset.asset_type.clone().unwrap_or_else(|| "EQUITY".to_string()),
+                exchange: "".to_string(), // Exchange info not available in Asset model
+                data_source: Some(asset.data_source.clone()),
             })
             .collect();
 
@@ -91,11 +92,19 @@ impl MarketDataServiceTrait for MarketDataService {
             .collect();
         drop(registry); // Release lock
 
+        // Transform and sort provider results, preserving provider_id in data_source
         let mut sorted_provider_results: Vec<(usize, i32, QuoteSummary)> = provider_results_with_ids
             .into_iter()
-            .map(|(provider_id, summary)| {
+            .map(|(provider_id, mut summary)| {
                 let priority = provider_priority_map.get(&provider_id).copied().unwrap_or(999);
                 let score = -(summary.score as i32); // Negative for descending order
+                
+                // Normalize Vietnamese index symbols: strip ^ prefix and .VN suffix
+                let normalized_symbol = Self::normalize_vietnamese_index_symbol(&summary.symbol);
+                summary.symbol = normalized_symbol;
+                // Preserve provider_id in data_source field
+                summary.data_source = Some(provider_id);
+                
                 (priority, score, summary)
             })
             .collect();
@@ -105,14 +114,7 @@ impl MarketDataServiceTrait for MarketDataService {
 
         let provider_results: Vec<QuoteSummary> = sorted_provider_results
             .into_iter()
-            .map(|(_, _, summary)| {
-                // Normalize Vietnamese index symbols: strip ^ prefix and .VN suffix
-                let normalized_symbol = Self::normalize_vietnamese_index_symbol(&summary.symbol);
-                QuoteSummary {
-                    symbol: normalized_symbol,
-                    ..summary
-                }
-            })
+            .map(|(_, _, summary)| summary)
             .collect();
 
         // 5. Combine: local assets first, then provider results

@@ -191,6 +191,7 @@ impl AssetProfiler for VnMarketProvider {
                 type_display: asset_type_to_string(&asset.asset_type),
                 long_name: asset.name,
                 exchange: asset.exchange,
+                data_source: None,
             }
         }).collect())
     }

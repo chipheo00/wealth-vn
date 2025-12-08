@@ -593,10 +593,38 @@ let record = VnHistoricalRecord::new(
     /// Search priority:
     /// 1. Cached assets from vn_assets table
     /// 2. Live API (VCI, FMarket)
-    /// 3. Gold symbols
+    /// 3. Vietnamese indices
+    /// 4. Gold symbols
     pub async fn search(&self, query: &str) -> Result<Vec<SearchResult>, VnMarketError> {
         let mut results = Vec::new();
         let query_lower = query.to_lowercase();
+
+        // Step 0: Check for Vietnamese indices first
+        let indices = vec![
+            ("VNINDEX", "VN-Index", "HOSE"),
+            ("HNXINDEX", "HNX-Index", "HNX"),
+            ("UPCOMINDEX", "HNX-UpCom", "UPCOM"),
+        ];
+        
+        for (symbol, name, exchange) in indices {
+            if symbol.to_lowercase().contains(&query_lower)
+                || query_lower.contains(&symbol.to_lowercase())
+            {
+                if !results.iter().any(|r: &SearchResult| r.symbol == symbol) {
+                    results.push(SearchResult {
+                        symbol: symbol.to_string(),
+                        name: name.to_string(),
+                        asset_type: VnAssetType::Index,
+                        exchange: exchange.to_string(),
+                    });
+                }
+            }
+        }
+        
+        // If we found indices, return them (they're priority)
+        if !results.is_empty() {
+            return Ok(results);
+        }
 
         // Step 1: Search cached assets from vn_assets table first
         if let Some(ref assets_repo) = self.assets_repository {
