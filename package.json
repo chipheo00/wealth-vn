@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",
+    "@fontsource/inter": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@internationalized/date": "^3.9.0",
     "@number-flow/react": "^0.5.10",
