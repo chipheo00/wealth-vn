@@ -5,8 +5,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm@8
+# Enable corepack and install matching pnpm version for lockfileVersion 9.0
+RUN corepack enable && npm install -g pnpm@9
 
 # Copy workspace files
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
