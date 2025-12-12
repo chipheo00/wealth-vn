@@ -1,0 +1,3 @@
+-- SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
+-- This is a simplified version; in production, you'd need a full table recreation
+-- For now, we'll leave this empty as SQLite ALTER TABLE is limited

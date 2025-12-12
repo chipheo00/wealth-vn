@@ -115,6 +115,7 @@ diesel::table! {
         description -> Nullable<Text>,
         target_amount -> Double,
         is_achieved -> Bool,
+        target_return_rate -> Nullable<Double>,
     }
 }
 

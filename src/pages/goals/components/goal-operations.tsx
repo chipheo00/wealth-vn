@@ -1,22 +1,22 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icons } from "@/components/ui/icons";
 
@@ -46,7 +46,12 @@ export function GoalOperations({ goal, onEdit, onDelete }: GoalOperationsProps) 
           <span className="sr-only">{t("goals.operations.openMenu")}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => onEdit(goal)}>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.preventDefault();
+              onEdit(goal);
+            }}
+          >
             {t("goals.operations.edit")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />

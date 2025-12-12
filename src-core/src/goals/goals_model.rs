@@ -24,6 +24,7 @@ pub struct Goal {
     pub description: Option<String>,
     pub target_amount: f64,
     pub is_achieved: bool,
+    pub target_return_rate: Option<f64>,
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug, Clone)]
@@ -35,6 +36,7 @@ pub struct NewGoal {
     pub description: Option<String>,
     pub target_amount: f64,
     pub is_achieved: bool,
+    pub target_return_rate: Option<f64>,
 }
 
 #[derive(

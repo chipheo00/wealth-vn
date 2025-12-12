@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { Account, Goal, GoalAllocation } from "@/lib/types";
 import { formatAmount } from "@wealthvn/ui";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface GoalsAllocationsProps {
