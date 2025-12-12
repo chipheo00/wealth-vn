@@ -193,13 +193,14 @@ export default function GoalDetailsPage() {
       <div className="mb-8">
         <h3 className="text-foreground mb-2 text-xl font-bold">Allocations</h3>
         <p className="text-muted-foreground mb-4 text-sm">
-          Click on a cell to specify the percentage of each account's allocation to this goal.
+          View current allocation percentages for this goal across accounts.
         </p>
         <GoalsAllocations
             goals={[goal]} // Only pass this goal
             existingAllocations={allocations || []}
             accounts={accounts || []}
             onSubmit={handleAddAllocation}
+            readOnly={true}
         />
       </div>
 
