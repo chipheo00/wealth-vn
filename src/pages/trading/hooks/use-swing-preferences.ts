@@ -3,7 +3,7 @@ import type { SwingTradePreferences } from "../types";
 
 const DEFAULT_PREFERENCES: SwingTradePreferences = {
   selectedActivityIds: [],
-  includeSwingTag: true,
+  includeAllActivities: true,
   selectedAccounts: [],
   lotMatchingMethod: "FIFO",
   defaultDateRange: "YTD",

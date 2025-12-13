@@ -66,7 +66,7 @@ export default function DashboardPage() {
     const { metrics, openPositions = [], periodPL = [], distribution, calendar = [] } = dashboardData;
 
     const hasSelectedActivities =
-        preferences.selectedActivityIds.length > 0 || preferences.includeSwingTag;
+        preferences.selectedActivityIds.length > 0 || preferences.includeAllActivities;
 
     if (!hasSelectedActivities) {
         return (
