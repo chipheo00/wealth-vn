@@ -27,12 +27,14 @@ import { useGoalProgress } from "./use-goal-progress";
 import { TimePeriodOption, useGoalValuationHistory } from "./use-goal-valuation-history";
 
 const TIME_PERIOD_OPTIONS = [
+  { value: "weeks" as const, label: "Weeks" },
   { value: "months" as const, label: "Months" },
   { value: "years" as const, label: "Years" },
+  { value: "all" as const, label: "All Time" },
 ];
 
 export default function GoalDetailsPage() {
-  useTranslation("goals");
+  const { t } = useTranslation("goals");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -70,8 +72,8 @@ export default function GoalDetailsPage() {
   if (!goal) {
     return (
       <Page className="flex h-screen flex-col items-center justify-center gap-4">
-        <h1 className="text-2xl font-bold">Goal not found</h1>
-        <Button onClick={() => navigate("/goals")}>Back to Goals</Button>
+        <h1 className="text-2xl font-bold">{t("notFound")}</h1>
+        <Button onClick={() => navigate("/goals")}>{t("backToGoals")}</Button>
       </Page>
     );
   }
@@ -108,20 +110,20 @@ export default function GoalDetailsPage() {
       <div className="flex items-start justify-between border-b pb-6">
         <div>
           <h1 className="text-foreground font-mono text-2xl font-bold">
-            Goals Detail: {goal.title}
+            {t("details.title", { title: goal.title })}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Review progress and configure your "{goal.title}" investment goal.
+            {t("details.description", { title: goal.title })}
           </p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => setVisibleModal(true)}>
             <Icons.Pencil className="mr-2 h-4 w-4" />
-            Edit Goal
+            {t("details.editGoal")}
           </Button>
           <Button onClick={() => navigate("/goals")}>
             <Icons.ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            {t("details.back")}
           </Button>
         </div>
       </div>
@@ -133,7 +135,7 @@ export default function GoalDetailsPage() {
         {/* Chart Card - 2 columns on desktop */}
         <div className="col-span-1 rounded-xl border border-border bg-card shadow-sm md:col-span-2">
           <div className="border-b border-border px-6 py-4 flex items-center justify-between">
-            <h3 className="text-foreground text-lg font-bold">Growth Projection</h3>
+            <h3 className="text-foreground text-lg font-bold">{t("details.chart.growthProjection")}</h3>
             <AnimatedToggleGroup
               items={TIME_PERIOD_OPTIONS}
               value={timePeriod}
@@ -151,8 +153,8 @@ export default function GoalDetailsPage() {
               ) : chartData.length === 0 ? (
                 <div className="text-muted-foreground flex h-full flex-col items-center justify-center">
                   <Icons.TrendingUp className="mb-2 h-12 w-12 opacity-50" />
-                  <p>No data available</p>
-                  <p className="text-sm">Add allocations to see growth projection</p>
+                  <p>{t("details.chart.noData")}</p>
+                  <p className="text-sm">{t("details.chart.noDataDescription")}</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -178,7 +180,7 @@ export default function GoalDetailsPage() {
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 11, fill: "currentColor" }}
-                      interval="preserveStartEnd"
+                      minTickGap={20}
                     />
                     <YAxis
                       axisLine={false}
@@ -204,7 +206,7 @@ export default function GoalDetailsPage() {
                       }}
                       formatter={(value, name) => [
                         formatTooltipValue(typeof value === "number" ? value : null),
-                        name === "projected" ? "Projected Growth" : "Actual Value",
+                        name === "projected" ? t("details.chart.projectedGrowth") : t("details.chart.actualValue"),
                       ]}
                       labelFormatter={(label) => label}
                     />
@@ -215,7 +217,7 @@ export default function GoalDetailsPage() {
                       iconType="circle"
                       iconSize={8}
                       formatter={(value) =>
-                        value === "projected" ? "Projected Growth" : "Actual Value"
+                        value === "projected" ? t("details.chart.projectedGrowth") : t("details.chart.actualValue")
                       }
                       wrapperStyle={{ fontSize: "12px", fontFamily: "monospace" }}
                     />
@@ -251,20 +253,20 @@ export default function GoalDetailsPage() {
         {/* Info Card - 1 column on desktop */}
         <div className="col-span-1 rounded-xl border border-border bg-card shadow-sm flex flex-col">
           <div className="border-b border-border px-6 py-4">
-            <h3 className="text-foreground text-lg font-bold">Overview</h3>
+            <h3 className="text-foreground text-lg font-bold">{t("details.overview.title")}</h3>
           </div>
           <div className="p-6 space-y-6 flex-1 flex flex-col">
             {/* Target Amount & Progress */}
             <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
               <div className="flex-1 space-y-3">
                 <div>
-                  <p className="text-muted-foreground text-xs font-mono mb-1">Target Amount</p>
+                  <p className="text-muted-foreground text-xs font-mono mb-1">{t("details.overview.targetAmount")}</p>
                   <p className="font-mono text-2xl font-bold" style={{ color: "var(--chart-projected)" }}>
                     {formatAmount(goal.targetAmount, "USD", false)}
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-muted-foreground text-xs">Current Progress</p>
+                  <p className="text-muted-foreground text-xs">{t("details.overview.currentProgress")}</p>
                   <p className="font-mono text-sm font-medium">
                     <span className="font-bold" style={{ color: actualColor }}>{progress.toFixed(1)}%</span> - <span style={{ color: actualColor }}>{formatAmount(currentAmount, "USD", false)}</span>
                   </p>
@@ -278,33 +280,33 @@ export default function GoalDetailsPage() {
             {/* Metrics Grid - 2x2 */}
             <div className="grid grid-cols-2 gap-3">
               <MetricDisplay
-                label="Monthly Investment (DCA)"
+                label={t("details.metrics.monthlyInvestmentDCA")}
                 value={undefined}
                 className="border-muted/30 bg-muted/30 rounded-md border"
                 labelComponent={
                   <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
-                    <span className="text-center">Monthly Investment</span>
+                    <span className="text-center">{t("details.metrics.monthlyInvestment")}</span>
                     <span className="text-foreground font-mono font-bold text-sm">
                       {goal.monthlyInvestment
                         ? formatAmount(goal.monthlyInvestment, "USD", false)
-                        : "Not set"}
+                        : t("details.metrics.notSet")}
                     </span>
                   </div>
                 }
               />
               <MetricDisplay
-                label="Target Return Rate"
+                label={t("details.metrics.targetReturnRate")}
                 value={goal.targetReturnRate ? goal.targetReturnRate / 100 : 0}
                 isPercentage={true}
                 className="border-muted/30 bg-muted/30 rounded-md border"
               />
               <MetricDisplay
-                label="Time Remaining"
+                label={t("details.metrics.timeRemaining")}
                 value={undefined}
                 className="border-muted/30 bg-muted/30 rounded-md border"
                 labelComponent={
                   <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
-                    <span className="text-center">Time Remaining</span>
+                    <span className="text-center">{t("details.metrics.timeRemaining")}</span>
                     <span className="text-foreground font-mono font-bold text-sm">
                       {formatTimeRemaining(goal.dueDate)}
                     </span>
@@ -312,12 +314,12 @@ export default function GoalDetailsPage() {
                 }
               />
               <MetricDisplay
-                label="Projected Future Value"
+                label={t("details.metrics.projectedFutureValue")}
                 value={undefined}
                 className="border-muted/30 bg-muted/30 rounded-md border"
                 labelComponent={
                   <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
-                    <span className="text-center">Projected Future Value</span>
+                    <span className="text-center">{t("details.metrics.projectedFutureValue")}</span>
                     <span className="font-mono font-bold text-sm" style={{ color: "var(--chart-projected)" }}>
                       {formatAmount(projectedFutureValue, "USD", false)}
                     </span>
@@ -331,9 +333,9 @@ export default function GoalDetailsPage() {
 
       {/* Allocations Table */}
       <div className="mb-8">
-        <h3 className="text-foreground mb-2 text-xl font-bold">Allocations</h3>
+        <h3 className="text-foreground mb-2 text-xl font-bold">{t("details.allocations.title")}</h3>
         <p className="text-muted-foreground mb-4 text-sm">
-          View current allocation percentages for this goal across accounts.
+          {t("details.allocations.description")}
         </p>
         <GoalsAllocations
           goals={[goal]} // Only pass this goal

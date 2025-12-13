@@ -13,7 +13,7 @@ import { useGoalMutations } from "./use-goal-mutations";
 import { useGoalProgress } from "./use-goal-progress";
 
 const GoalsPage = () => {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation("goals");
   const { data: goals, isLoading } = useQuery<Goal[], Error>({
     queryKey: [QueryKeys.GOALS],
     queryFn: getGoals,
@@ -71,21 +71,21 @@ const GoalsPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("goals.title")}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground mt-2">
-            {t("goals.description")}
+            {t("description")}
           </p>
         </div>
         <div className="flex items-center gap-2">
             <Button className="hidden sm:inline-flex" onClick={() => handleAddGoal()}>
               <Icons.Plus className="mr-2 h-4 w-4" />
-              {t("goals.addButton")}
+              {t("addButton")}
             </Button>
             <Button
               size="icon"
               className="sm:hidden"
               onClick={() => handleAddGoal()}
-              aria-label={t("goals.addButton")}
+              aria-label={t("addButton")}
             >
               <Icons.Plus className="h-4 w-4" />
             </Button>
@@ -96,7 +96,7 @@ const GoalsPage = () => {
         {goals?.length ? (
           <>
             <div>
-              <h2 className="text-foreground mb-6 text-xl font-bold">{t("goals.goalsHeading")}</h2>
+              <h2 className="text-foreground mb-6 text-xl font-bold">{t("goalsHeading")}</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {goals.map((goal: Goal) => {
                   const goalProgress = getGoalProgress(goal.id);
@@ -117,9 +117,9 @@ const GoalsPage = () => {
 
             <div>
               <div className="mb-6">
-                <h2 className="text-foreground text-xl font-bold">{t("goals.allocationsHeading")}</h2>
+                <h2 className="text-foreground text-xl font-bold">{t("allocationsHeading")}</h2>
                 <p className="text-muted-foreground text-sm">
-                  {t("goals.allocationsDescription")}
+                  {t("allocationsDescription")}
                 </p>
               </div>
               <GoalsAllocations
@@ -133,13 +133,13 @@ const GoalsPage = () => {
         ) : (
           <EmptyPlaceholder>
             <EmptyPlaceholder.Icon name="Goal" />
-            <EmptyPlaceholder.Title>{t("goals.empty.title")}</EmptyPlaceholder.Title>
+            <EmptyPlaceholder.Title>{t("empty.title")}</EmptyPlaceholder.Title>
             <EmptyPlaceholder.Description>
-              {t("goals.empty.description")}
+              {t("empty.description")}
             </EmptyPlaceholder.Description>
             <Button onClick={() => handleAddGoal()}>
               <Icons.Plus className="mr-2 h-4 w-4" />
-              {t("goals.addGoalButton")}
+              {t("addGoalButton")}
             </Button>
           </EmptyPlaceholder>
         )}

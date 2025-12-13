@@ -4,7 +4,11 @@ import { QueryKeys } from "@/lib/query-keys";
 import type { AccountValuation, Goal, GoalAllocation } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import {
+    addMonths,
+    addWeeks,
+    addYears,
     eachMonthOfInterval,
+    eachWeekOfInterval,
     eachYearOfInterval,
     format,
     isAfter,
@@ -12,10 +16,82 @@ import {
     isEqual,
     parseISO,
     startOfDay,
+    startOfYear,
+    subMonths,
+    subWeeks,
+    subYears,
 } from "date-fns";
 import { useMemo } from "react";
 
-export type TimePeriodOption = "months" | "years";
+export type TimePeriodOption = "weeks" | "months" | "years" | "all";
+
+/**
+ * Calculate display date range centered around today
+ * For all: show from goal start to due date
+ * For others: center around today with specific past/future counts
+ */
+function calculateDisplayDateRange(
+  period: TimePeriodOption,
+  goalStartDate: Date,
+  goalDueDate: Date,
+): { displayStart: Date; displayEnd: Date } {
+  const today = startOfDay(new Date());
+
+  if (period === "all") {
+    // For all time, we just use the goal start and end date
+    return {
+      displayStart: goalStartDate,
+      displayEnd: goalDueDate,
+    };
+  }
+
+  // Default display counts (how many periods to show on each side of today)
+  const displayCounts: Record<Exclude<TimePeriodOption, "all">, { past: number; future: number }> =
+    {
+      weeks: { past: 12, future: 12 },
+      months: { past: 12, future: 12 },
+      years: { past: 3, future: 5 },
+    };
+
+  const counts = displayCounts[period];
+  let displayStart: Date;
+  let displayEnd: Date;
+
+  switch (period) {
+    case "weeks": {
+      displayStart = subWeeks(today, counts.past);
+      displayEnd = addWeeks(today, counts.future);
+      break;
+    }
+    case "months": {
+      displayStart = subMonths(today, counts.past);
+      displayEnd = addMonths(today, counts.future);
+      break;
+    }
+    case "years": {
+      displayStart = subYears(today, counts.past);
+      displayEnd = addYears(today, counts.future);
+      break;
+    }
+  }
+
+  // Constrain start date: Don't show data before the goal started
+  if (isBefore(displayStart, goalStartDate)) {
+    displayStart = goalStartDate;
+  }
+
+  // Constrain end date: Don't show data beyond the goal due date
+  if (isAfter(displayEnd, goalDueDate)) {
+    displayEnd = goalDueDate;
+  }
+
+  // Ensure start is before end (in case constraints flipped them)
+  if (isAfter(displayStart, displayEnd)) {
+      displayEnd = displayStart;
+  }
+
+  return { displayStart, displayEnd };
+}
 
 interface GoalChartDataPoint {
   date: string;
@@ -76,12 +152,19 @@ function getMonthsDiff(startDate: Date, endDate: Date): number {
  */
 function generateDateIntervals(startDate: Date, endDate: Date, period: TimePeriodOption): Date[] {
   const today = startOfDay(new Date());
-  const effectiveEndDate = isAfter(endDate, today) ? endDate : today;
+  // For 'all', we use the actual endDate, for others we might cap it or not depending on display logic
+  // but simpler to just respect the passed start/end dates
+  const effectiveEndDate = period === "all" ? endDate : (isAfter(endDate, today) ? endDate : today);
 
   switch (period) {
+    case "weeks":
+      return eachWeekOfInterval({ start: startDate, end: effectiveEndDate });
     case "months":
       return eachMonthOfInterval({ start: startDate, end: effectiveEndDate });
     case "years":
+      return eachYearOfInterval({ start: startDate, end: effectiveEndDate });
+    case "all":
+      // "All time" view uses yearly intervals
       return eachYearOfInterval({ start: startDate, end: effectiveEndDate });
     default:
       return eachMonthOfInterval({ start: startDate, end: effectiveEndDate });
@@ -93,12 +176,16 @@ function generateDateIntervals(startDate: Date, endDate: Date, period: TimePerio
  */
 function formatDateLabel(date: Date, period: TimePeriodOption): string {
   switch (period) {
+    case "weeks":
+      return format(date, "d MMM");
     case "months":
-      return format(date, "MMM yyyy");
+      return format(date, "MMM ''yy");
     case "years":
       return format(date, "yyyy");
+    case "all":
+      return format(date, "yyyy");
     default:
-      return format(date, "MMM yyyy");
+      return format(date, "MMM ''yy");
   }
 }
 
@@ -116,21 +203,24 @@ function aggregateValuationsByPeriod(
     const dateStr = format(date, "yyyy-MM-dd");
     let value: number | null = null;
 
-    if (period === "years") {
-      // For yearly aggregation, get the last valuation in that year
+    if (period === "years" || period === "all") {
+      // For yearly aggregation (and all time), get the last valuation in that year
       const year = date.getFullYear();
       let lastValueInYear: number | null = null;
       const sortedDates = Array.from(valuations.keys()).sort();
 
       for (const valDate of sortedDates) {
         const valDateObj = parseISO(valDate);
-        if (valDateObj.getFullYear() === year && (isBefore(valDateObj, new Date(year + "-12-31")) || isEqual(valDateObj, date))) {
+        if (
+          valDateObj.getFullYear() === year &&
+          (isBefore(valDateObj, new Date(year + "-12-31")) || isEqual(valDateObj, date))
+        ) {
           lastValueInYear = valuations.get(valDate) ?? null;
         }
       }
       value = lastValueInYear;
     } else {
-      // For monthly aggregation, find the closest valuation on or before this date
+      // For weekly/monthly, find the closest valuation on or before this date
       let closestValue: number | null = null;
       const sortedDates = Array.from(valuations.keys()).sort();
 
@@ -248,13 +338,17 @@ export function useGoalValuationHistory(
 
     // Check if goal is scheduled for the future
     const isGoalInFuture = isAfter(goalStartDate, today);
+    const goalDueDate = goal.dueDate ? parseISO(goal.dueDate) : endDate;
+
+    // Calculate display date range
+    const { displayStart, displayEnd } = calculateDisplayDateRange(
+      period,
+      isGoalInFuture ? goalStartDate : dataStartDate,
+      goalDueDate,
+    );
 
     // Generate date intervals from goal start date (for projection) to end date
-    const dateIntervals = generateDateIntervals(
-      isGoalInFuture ? goalStartDate : dataStartDate,
-      endDate,
-      period,
-    );
+    const dateIntervals = generateDateIntervals(displayStart, displayEnd, period);
 
     // Get allocation percentages for this goal
     const allocationMap = new Map<string, number>();
@@ -266,6 +360,7 @@ export function useGoalValuationHistory(
 
     // Calculate actual values by date (weighted sum of account valuations)
     const actualValuesByDate = new Map<string, number>();
+    let latestActualValue: number | null = null;
 
     if (historicalValuations) {
       // Combine all valuation dates
@@ -290,12 +385,28 @@ export function useGoalValuationHistory(
 
           if (totalValue > 0) {
             actualValuesByDate.set(dateStr, totalValue);
+            latestActualValue = totalValue;
           }
         });
     }
 
     // Aggregate actual values by period
-    const aggregatedActuals = aggregateValuationsByPeriod(actualValuesByDate, dateIntervals, period);
+    const aggregatedActuals = aggregateValuationsByPeriod(
+      actualValuesByDate,
+      dateIntervals,
+      period,
+    );
+
+    // For current period in years/all view, use latest value if available
+    if ((period === "years" || period === "all") && latestActualValue !== null) {
+      const currentYearKey = format(startOfYear(today), "yyyy-MM-dd");
+      // Find valid date key in aggregatedActuals that represents the current year
+      // Since generateDateIntervals returns start of years, it should match
+      const existingValue = aggregatedActuals.get(currentYearKey);
+      if (!existingValue || latestActualValue > existingValue) {
+        aggregatedActuals.set(currentYearKey, latestActualValue);
+      }
+    }
 
     // Get projection parameters
     const monthlyInvestment = goal.monthlyInvestment ?? 0;
@@ -338,7 +449,21 @@ export function useGoalValuationHistory(
       // Get actual value (only for dates up to today and after goal start)
       const isInPast = isBefore(date, today) || isEqual(date, today);
       const isAfterGoalStart = !isBefore(date, goalStartDate);
-      const actual = isInPast && isAfterGoalStart ? (aggregatedActuals.get(dateStr) ?? null) : null;
+      let actual =
+        isInPast && isAfterGoalStart ? (aggregatedActuals.get(dateStr) ?? null) : null;
+
+      // Special handling for current period to show latest known value
+      if (actual === null && latestActualValue !== null && isInPast) {
+          const isSamePeriod =
+            (period === "weeks" && format(date, "yyyy-ww") === format(today, "yyyy-ww")) ||
+            (period === "months" && format(date, "yyyy-MM") === format(today, "yyyy-MM")) ||
+            (period === "years" && format(date, "yyyy") === format(today, "yyyy")) ||
+            (period === "all" && format(date, "yyyy") === format(today, "yyyy"));
+
+          if (isSamePeriod) {
+            actual = latestActualValue;
+          }
+      }
 
       return {
         date: dateStr,

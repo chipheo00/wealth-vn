@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Goal } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatAmount } from "@wealthvn/ui";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { GoalOperations } from "./goal-operations";
 
@@ -17,16 +18,17 @@ export interface GoalItemProps {
 
 export function GoalItem({ goal, currentValue = 0, progress = 0, isOnTrack = true, onEdit, onDelete }: GoalItemProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation("goals");
 
   // Determine the track status text and color
   const getTrackStatus = () => {
     if (goal.isAchieved) {
-      return { text: "Done", colorVar: "var(--success)" };
+      return { text: t("item.done"), colorVar: "var(--success)" };
     }
     if (isOnTrack) {
-      return { text: "On track", colorVar: "var(--chart-actual-on-track)" };
+      return { text: t("item.onTrack"), colorVar: "var(--chart-actual-on-track)" };
     }
-    return { text: "Off track", colorVar: "var(--chart-actual-off-track)" };
+    return { text: t("item.offTrack"), colorVar: "var(--chart-actual-off-track)" };
   };
 
   const trackStatus = getTrackStatus();
@@ -49,7 +51,7 @@ export function GoalItem({ goal, currentValue = 0, progress = 0, isOnTrack = tru
                 ? "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/30"
                 : "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/30"
             )}>
-              {goal.isAchieved ? "Completed" : "Ongoing"}
+              {goal.isAchieved ? t("item.completed") : t("item.ongoing")}
             </span>
           </div>
         </div>
@@ -60,11 +62,11 @@ export function GoalItem({ goal, currentValue = 0, progress = 0, isOnTrack = tru
 
       <div className="space-y-4">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Current</span>
+          <span className="text-muted-foreground">{t("item.current")}</span>
           <span className="text-foreground font-mono font-bold">{formatAmount(currentValue, "USD", false)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Target</span>
+          <span className="text-muted-foreground">{t("item.target")}</span>
           <span className="text-foreground font-mono font-bold">{formatAmount(goal.targetAmount, "USD", false)}</span>
         </div>
 

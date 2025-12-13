@@ -29,7 +29,7 @@ export interface GoalOperationsProps {
 }
 
 export function GoalOperations({ goal, onEdit, onDelete }: GoalOperationsProps) {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation("goals");
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   //const navigation = useNavigation();
   const isDeleting = false; //navigation?.formData?.get('intent') === 'delete';
@@ -43,7 +43,7 @@ export function GoalOperations({ goal, onEdit, onDelete }: GoalOperationsProps) 
       <DropdownMenu>
         <DropdownMenuTrigger className="hover:bg-muted flex h-8 w-8 items-center justify-center rounded-md border transition-colors">
           <Icons.MoreVertical className="h-4 w-4" />
-          <span className="sr-only">{t("goals.operations.openMenu")}</span>
+          <span className="sr-only">{t("operations.openMenu")}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
@@ -52,27 +52,27 @@ export function GoalOperations({ goal, onEdit, onDelete }: GoalOperationsProps) 
               onEdit(goal);
             }}
           >
-            {t("goals.operations.edit")}
+            {t("operations.edit")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-destructive focus:text-destructive flex cursor-pointer items-center"
             onSelect={() => setShowDeleteAlert(true)}
           >
-            {t("goals.operations.delete")}
+            {t("operations.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("goals.delete.title")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("goals.delete.description")}</AlertDialogDescription>
+            <AlertDialogTitle>{t("delete.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("delete.description")}</AlertDialogDescription>
           </AlertDialogHeader>
 
           <AlertDialogFooter>
             <input type="hidden" name="id" value={goal.id} />
-            <AlertDialogCancel>{t("goals.form.buttons.cancel")}</AlertDialogCancel>
+            <AlertDialogCancel>{t("form.buttons.cancel")}</AlertDialogCancel>
 
             <Button
               disabled={isDeleting}
@@ -84,7 +84,7 @@ export function GoalOperations({ goal, onEdit, onDelete }: GoalOperationsProps) 
               ) : (
                 <Icons.Trash className="mr-2 h-4 w-4" />
               )}
-              <span>{t("goals.delete.button")}</span>
+              <span>{t("delete.button")}</span>
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

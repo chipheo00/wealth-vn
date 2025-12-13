@@ -21,7 +21,7 @@ const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
   onSubmit,
   readOnly = false,
 }) => {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation("goals");
   const [allocations, setAllocations] = useState<GoalAllocation[]>(existingAllocations || []);
   const [totalAllocations, setTotalAllocations] = useState<Record<string, number>>({});
   const [isExceeding, setIsExceeding] = useState<boolean>(false);
@@ -66,7 +66,7 @@ const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
   const handleSubmit = () => {
     if (isExceeding) {
       toast({
-        title: t("goals.allocations.toast.errorTitle"),
+        title: t("allocations.toast.errorTitle"),
         className: "bg-red-500 text-white border-none",
       });
       return;
@@ -81,7 +81,7 @@ const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
           <thead>
             <tr>
               <th className="bg-muted sticky left-0 z-10 px-4 py-2 text-sm font-normal">
-                {t("goals.allocations.tableHeader")}
+                {t("allocations.tableHeader")}
               </th>
               {accounts.map((account) => (
                 <th key={account.id} className="border-l px-4 py-2 text-xs font-normal">
@@ -91,7 +91,7 @@ const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
             </tr>
             <tr>
               <td className="bg-muted text-muted-foreground sticky left-0 z-10 border-t border-r px-4 py-2 text-xs">
-                {t("goals.allocations.totalRow")}
+                {t("allocations.totalRow")}
               </td>
               {accounts.map((account) => (
                 <td
@@ -141,7 +141,7 @@ const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
       {!readOnly && (
         <div className="mt-4 text-right">
           <Button onClick={handleSubmit} disabled={isExceeding}>
-            {t("goals.allocations.saveButton")}
+            {t("allocations.saveButton")}
           </Button>
         </div>
       )}
