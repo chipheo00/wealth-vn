@@ -1,16 +1,16 @@
 import { OpenTradesTable } from "@/components/open-trades-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Icons,
-    Page,
-    PageContent,
-    PageHeader,
-    Skeleton,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Icons,
+  Page,
+  PageContent,
+  PageHeader,
+  Skeleton,
 } from "@wealthvn/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -219,8 +219,8 @@ export default function DashboardPage() {
   const headerActions = (
     <div className="flex items-center gap-2">
       <TabsList className="bg-muted/50 p-1">
-        <TabsTrigger value="dashboard" className="px-4 text-xs font-medium">Dashboard</TabsTrigger>
-        <TabsTrigger value="income" className="px-4 text-xs font-medium">Income</TabsTrigger>
+        <TabsTrigger value="dashboard" className="px-4 text-xs font-medium">{t("dashboard.tabs.dashboard")}</TabsTrigger>
+        <TabsTrigger value="income" className="px-4 text-xs font-medium">{t("dashboard.tabs.income")}</TabsTrigger>
       </TabsList>
 
       <div className="h-6 w-px bg-border mx-2" />
@@ -255,70 +255,6 @@ export default function DashboardPage() {
       </Tabs>
 
       <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
-    </Page>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <Page>
-      <PageHeader
-        heading="Trading Dashboard"
-        text="Track your trading performance and analytics"
-        actions={
-          <>
-            <Skeleton className="h-9 w-[280px]" />
-            <Skeleton className="h-9 w-[100px] sm:w-[140px]" />
-            <Skeleton className="h-9 w-9" />
-          </>
-        }
-      />
-
-      <PageContent>
-        <div className="space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
-            {[...Array(3)].map((_, index) => (
-              <Card key={index}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-[100px] sm:w-[120px]" />
-                  <Skeleton className="h-4 w-4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-6 w-[120px] sm:h-8 sm:w-[150px]" />
-                  <Skeleton className="mt-2 h-3 w-[80px] sm:h-4 sm:w-[100px]" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-5 w-[120px] sm:h-6 sm:w-[150px]" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-[250px] w-full sm:h-[300px]" />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-5 w-[150px] sm:h-6 sm:w-[180px]" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 sm:space-y-4">
-                  {[...Array(5)].map((_, index) => (
-                    <div key={index} className="flex justify-between">
-                      <Skeleton className="h-3 w-[80px] sm:h-4 sm:w-[100px]" />
-                      <Skeleton className="h-3 w-[60px] sm:h-4 sm:w-[80px]" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </PageContent>
     </Page>
   );
 }

@@ -40,6 +40,10 @@
   "dashboard": {
     "heading": "Trading Dashboard",
     "description": "Track your trading performance and analytics",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "income": "Income"
+    },
     "selectActivities": "Select Activities",
     "settings": "Settings",
     "tryAgain": "Try Again",

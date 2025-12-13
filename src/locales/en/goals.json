@@ -15,7 +15,7 @@
     "currentAmount": "Current Amount",
     "targetDate": "Target Date",
     "addTitle": "Add Goal",
-    "updateTitle": "Edit Goal",
+    "updateTitle": "Edit",
     "addDescription": "Create a new financial goal to track.",
     "updateDescription": "Update your goal details.",
     "fields": {
@@ -101,7 +101,13 @@
       "noData": "No data available",
       "noDataDescription": "Add allocations to see growth projection",
       "projectedGrowth": "Projected Growth",
-      "actualValue": "Actual Value"
+      "actualValue": "Actual Value",
+      "periods": {
+        "weeks": "Weeks",
+        "months": "Months",
+        "years": "Years",
+        "all": "All Time"
+      }
     },
     "overview": {
       "title": "Overview",
@@ -130,5 +136,17 @@
     "ongoing": "Ongoing",
     "current": "Current",
     "target": "Target"
+  },
+  "time": {
+    "notSet": "Not set",
+    "invalidDate": "Invalid date",
+    "overdue": "Overdue",
+    "year": "Year",
+    "years": "Years",
+    "month": "Month",
+    "months": "Months",
+    "day": "Day",
+    "days": "Days",
+    "lessThanADay": "Less than a day"
   }
 }

@@ -93,15 +93,21 @@
   },
   "details": {
     "title": "Chi tiết mục tiêu: {{title}}",
-    "description": "Xem lại tiến độ và cấu hình mục tiêu đầu tư \"{{title}}\" của bạn.",
-    "editGoal": "Chỉnh sửa mục tiêu",
+    "description": "Xem lại tiến độ và thiết lập mục tiêu đầu tư \"{{title}}\" của bạn.",
+    "editGoal": "Chỉnh sửa",
     "back": "Quay lại",
     "chart": {
       "growthProjection": "Dự phóng tăng trưởng",
       "noData": "Không có dữ liệu",
       "noDataDescription": "Thêm phân bổ để xem dự phóng tăng trưởng",
       "projectedGrowth": "Tăng trưởng dự phóng",
-      "actualValue": "Giá trị thực tế"
+      "actualValue": "Giá trị thực tế",
+      "periods": {
+        "weeks": "Tuần",
+        "months": "Tháng",
+        "years": "Năm",
+        "all": "Toàn bộ"
+      }
     },
     "overview": {
       "title": "Tổng quan",
@@ -130,5 +136,17 @@
     "ongoing": "Đang thực hiện",
     "current": "Hiện tại",
     "target": "Mục tiêu"
+  },
+  "time": {
+    "notSet": "Chưa thiết lập",
+    "invalidDate": "Ngày không hợp lệ",
+    "overdue": "Quá hạn",
+    "year": "Năm",
+    "years": "Năm",
+    "month": "Tháng",
+    "months": "Tháng",
+    "day": "Ngày",
+    "days": "Ngày",
+    "lessThanADay": "Dưới một ngày"
   }
 }

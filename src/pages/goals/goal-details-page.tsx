@@ -26,12 +26,7 @@ import { useGoalMutations } from "./use-goal-mutations";
 import { useGoalProgress } from "./use-goal-progress";
 import { TimePeriodOption, useGoalValuationHistory } from "./use-goal-valuation-history";
 
-const TIME_PERIOD_OPTIONS = [
-  { value: "weeks" as const, label: "Weeks" },
-  { value: "months" as const, label: "Months" },
-  { value: "years" as const, label: "Years" },
-  { value: "all" as const, label: "All Time" },
-];
+
 
 export default function GoalDetailsPage() {
    const { t } = useTranslation("goals");
@@ -56,6 +51,14 @@ export default function GoalDetailsPage() {
 
   const goal = goals?.find((g) => g.id === id);
   const goalProgress = id ? getGoalProgress(id) : undefined;
+
+  // Move options definition inside component to use translation
+  const timePeriodOptions = [
+    { value: "weeks" as const, label: t("details.chart.periods.weeks") },
+    { value: "months" as const, label: t("details.chart.periods.months") },
+    { value: "years" as const, label: t("details.chart.periods.years") },
+    { value: "all" as const, label: t("details.chart.periods.all") },
+  ];
 
   // Use the new hook for chart data
   const { chartData, isLoading: isChartLoading } = useGoalValuationHistory(goal, timePeriod);
@@ -90,7 +93,7 @@ export default function GoalDetailsPage() {
   const today = new Date();
   const todayDateStr = today.toISOString().split("T")[0];
   let projectedValueToday = currentAmount;
-  
+
   if (chartData.length > 0) {
     // Find the first data point that is today or in the future
     const nextDataPoint = chartData.find((d) => {
@@ -119,7 +122,7 @@ export default function GoalDetailsPage() {
       {/* Header */}
       <div className="flex items-start justify-between border-b pb-6">
         <div>
-          <h1 className="text-foreground font-mono text-2xl font-bold">
+          <h1 className="text-foreground text-2xl font-bold">
             {t("details.title", { title: goal.title })}
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -147,7 +150,7 @@ export default function GoalDetailsPage() {
           <div className="border-b border-border px-6 py-4 flex items-center justify-between">
             <h3 className="text-foreground text-lg font-bold">{t("details.chart.growthProjection")}</h3>
             <AnimatedToggleGroup
-              items={TIME_PERIOD_OPTIONS}
+              items={timePeriodOptions}
               value={timePeriod}
               onValueChange={(value) => setTimePeriod(value as TimePeriodOption)}
               variant="secondary"
@@ -229,7 +232,7 @@ export default function GoalDetailsPage() {
                       formatter={(value) =>
                         value === "projected" ? t("details.chart.projectedGrowth") : t("details.chart.actualValue")
                       }
-                      wrapperStyle={{ fontSize: "12px", fontFamily: "monospace" }}
+                      wrapperStyle={{ fontSize: "12px" }}
                     />
                     <Area
                       type="monotone"
@@ -270,14 +273,14 @@ export default function GoalDetailsPage() {
             <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
               <div className="flex-1 space-y-3">
                 <div>
-                  <p className="text-muted-foreground text-xs font-mono mb-1">{t("details.overview.targetAmount")}</p>
-                  <p className="font-mono text-2xl font-bold" style={{ color: "var(--chart-projected)" }}>
+                  <p className="text-muted-foreground text-xs mb-1">{t("details.overview.targetAmount")}</p>
+                  <p className="text-2xl font-bold" style={{ color: "var(--chart-projected)" }}>
                     {formatAmount(goal.targetAmount, "USD", false)}
                   </p>
                 </div>
                 <div className="space-y-1.5">
                   <p className="text-muted-foreground text-xs">{t("details.overview.currentProgress")}</p>
-                  <p className="font-mono text-sm font-medium">
+                  <p className="text-sm font-medium">
                     <span className="font-bold" style={{ color: actualColor }}>{progress.toFixed(1)}%</span> - <span style={{ color: actualColor }}>{formatAmount(currentAmount, "USD", false)}</span>
                   </p>
                 </div>
@@ -290,7 +293,7 @@ export default function GoalDetailsPage() {
             {/* Description - if exists */}
             {goal.description && (
               <div className="pb-6 border-b border-border">
-                <p className="text-muted-foreground text-xs font-mono mb-2">{t("details.overview.description")}</p>
+                <p className="text-muted-foreground text-xs mb-2">{t("details.overview.description")}</p>
                 <div
                   style={{
                     overflow: "hidden",
@@ -314,7 +317,7 @@ export default function GoalDetailsPage() {
                 labelComponent={
                   <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
                     <span className="text-center">{t("details.metrics.monthlyInvestment")}</span>
-                    <span className="text-foreground font-mono font-bold text-sm">
+                    <span className="text-foreground font-bold text-sm">
                       {goal.monthlyInvestment
                         ? formatAmount(goal.monthlyInvestment, "USD", false)
                         : t("details.metrics.notSet")}
@@ -335,8 +338,8 @@ export default function GoalDetailsPage() {
                 labelComponent={
                   <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
                     <span className="text-center">{t("details.metrics.timeRemaining")}</span>
-                    <span className="text-foreground font-mono font-bold text-sm">
-                      {formatTimeRemaining(goal.dueDate)}
+                    <span className="text-foreground font-bold text-sm">
+                      {formatTimeRemaining(goal.dueDate, t)}
                     </span>
                   </div>
                 }
@@ -348,7 +351,7 @@ export default function GoalDetailsPage() {
                 labelComponent={
                   <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
                     <span className="text-center">{t("details.metrics.projectedFutureValue")}</span>
-                    <span className="font-mono font-bold text-sm" style={{ color: "var(--chart-projected)" }}>
+                    <span className="font-bold text-sm" style={{ color: "var(--chart-projected)" }}>
                       {formatAmount(projectedFutureValue, "USD", false)}
                     </span>
                   </div>

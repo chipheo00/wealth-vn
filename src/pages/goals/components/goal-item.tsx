@@ -63,11 +63,11 @@ export function GoalItem({ goal, currentValue = 0, progress = 0, isOnTrack = tru
       <div className="space-y-4">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">{t("item.current")}</span>
-          <span className="text-foreground font-mono font-bold">{formatAmount(currentValue, "USD", false)}</span>
+          <span className="text-foreground font-bold">{formatAmount(currentValue, "USD", false)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">{t("item.target")}</span>
-          <span className="text-foreground font-mono font-bold">{formatAmount(goal.targetAmount, "USD", false)}</span>
+          <span className="text-foreground font-bold">{formatAmount(goal.targetAmount, "USD", false)}</span>
         </div>
 
         <div className="relative pt-1">

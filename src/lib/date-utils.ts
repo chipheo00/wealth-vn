@@ -3,16 +3,24 @@
  * @param dueDate - ISO string or Date object
  * @returns Formatted string like "4 Years 2 Months" or "3 Months" or "15 Days"
  */
-export function formatTimeRemaining(dueDate: string | Date | undefined): string {
-  if (!dueDate) return "Not set";
+import { TFunction } from "i18next";
+
+/**
+ * Format the remaining time until a due date
+ * @param dueDate - ISO string or Date object
+ * @param t - Optional translation function
+ * @returns Formatted string like "4 Years 2 Months" or "3 Months" or "15 Days"
+ */
+export function formatTimeRemaining(dueDate: string | Date | undefined, t?: TFunction): string {
+  if (!dueDate) return t ? t("time.notSet" as any) : "Not set";
 
   const now = new Date();
   const targetDate = typeof dueDate === "string" ? new Date(dueDate) : dueDate;
 
-  if (isNaN(targetDate.getTime())) return "Invalid date";
+  if (isNaN(targetDate.getTime())) return t ? t("time.invalidDate" as any) : "Invalid date";
 
   // If date is in the past
-  if (targetDate < now) return "Overdue";
+  if (targetDate < now) return t ? t("time.overdue" as any) : "Overdue";
 
   // Calculate difference in milliseconds
   let diff = targetDate.getTime() - now.getTime();
@@ -28,18 +36,21 @@ export function formatTimeRemaining(dueDate: string | Date | undefined): string 
   const parts: string[] = [];
 
   if (years > 0) {
-    parts.push(`${years} ${years === 1 ? "Year" : "Years"}`);
+    const yearLabel = t ? (years === 1 ? t("time.year" as any) : t("time.years" as any)) : (years === 1 ? "Year" : "Years");
+    parts.push(`${years} ${yearLabel}`);
   }
 
   if (months > 0) {
-    parts.push(`${months} ${months === 1 ? "Month" : "Months"}`);
+    const monthLabel = t ? (months === 1 ? t("time.month" as any) : t("time.months" as any)) : (months === 1 ? "Month" : "Months");
+    parts.push(`${months} ${monthLabel}`);
   }
 
   if (remainingDays > 0 && years === 0 && months < 3) {
-    parts.push(`${remainingDays} ${remainingDays === 1 ? "Day" : "Days"}`);
+    const dayLabel = t ? (remainingDays === 1 ? t("time.day" as any) : t("time.days" as any)) : (remainingDays === 1 ? "Day" : "Days");
+    parts.push(`${remainingDays} ${dayLabel}`);
   }
 
-  return parts.length > 0 ? parts.join(" ") : "Less than a day";
+  return parts.length > 0 ? parts.join(" ") : (t ? t("time.lessThanADay" as any) : "Less than a day");
 }
 
 /**
