@@ -143,6 +143,9 @@
   --chart-3: hsl(50 3% 42%);
   --chart-4: hsl(43 3% 52%);
   --chart-5: hsl(47 4% 61%);
+  --chart-projected: hsl(var(--flexoki-gr));
+  --chart-actual-on-track: hsl(181, 82%, 51%);
+  --chart-actual-off-track: hsl(var(--flexoki-re));
 
   /* Sidebar (full hsl colors) */
   --sidebar: hsl(var(--flexoki-bg));
@@ -199,6 +202,9 @@
    --chart-3: hsl(23 70% 51%);
    --chart-4: hsl(23 73% 46%);
    --chart-5: hsl(22 80% 41%);
+   --chart-projected: hsl(var(--flexoki-gr));
+   --chart-actual-on-track: hsl(var(--flexoki-gr));
+   --chart-actual-off-track: hsl(var(--flexoki-re));
 
    /* Toast styles */
    --toast-bg: hsl(var(--flexoki-bg-2));

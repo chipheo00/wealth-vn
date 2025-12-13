@@ -5,6 +5,7 @@ import { QueryKeys } from "@/lib/query-keys";
 import type { AccountValuation, Goal, GoalAllocation } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { isGoalOnTrack } from "./lib/goal-utils";
 
 interface GoalProgress {
   goalId: string;
@@ -13,9 +14,33 @@ interface GoalProgress {
   progress: number; // percentage (actual)
   expectedProgress: number; // percentage (based on timeline)
   isOnTrack: boolean;
+  projectedValue: number; // projected value at today's date
 }
 
-// Deadline is no longer tracked, so expected progress is always 0
+/**
+ * Calculate projected value using compound interest formula with regular contributions
+ * FV = PV × (1 + r)^n + PMT × [((1 + r)^n - 1) / r]
+ */
+function calculateProjectedValue(
+  startValue: number,
+  monthlyInvestment: number,
+  annualReturnRate: number,
+  monthsFromStart: number,
+): number {
+  if (monthsFromStart <= 0) return startValue;
+
+  const monthlyRate = annualReturnRate / 100 / 12;
+
+  if (monthlyRate === 0) {
+    return startValue + monthlyInvestment * monthsFromStart;
+  }
+
+  const compoundFactor = Math.pow(1 + monthlyRate, monthsFromStart);
+  const futurePV = startValue * compoundFactor;
+  const futureContributions = monthlyInvestment * ((compoundFactor - 1) / monthlyRate);
+
+  return futurePV + futureContributions;
+}
 
 /**
  * Hook to calculate goal progress based on account allocations and their values.
@@ -25,7 +50,8 @@ interface GoalProgress {
  * 2. For each allocation, get the account's current value
  * 3. Multiply account value by allocation percentage
  * 4. Sum up all the allocated values to get the goal's current value
- * 5. Compare actual progress to expected progress (based on timeline) to determine if on track
+ * 5. Calculate projected value at today's date
+ * 6. Compare actual vs projected to determine if on track
  */
 export function useGoalProgress(goals: Goal[] | undefined) {
   const { accounts } = useAccounts();
@@ -70,13 +96,28 @@ export function useGoalProgress(goals: Goal[] | undefined) {
         ? Math.min((currentValue / goal.targetAmount) * 100, 100)
         : 0;
 
+      // Calculate projected value at today's date
+      // Assume goal started 1 year ago (or from allocations data)
+      const monthlyInvestment = goal.monthlyInvestment ?? 0;
+      const annualReturnRate = goal.targetReturnRate ?? 0;
+      
+      // Use current value as start value for projection
+      // This represents where we are now, projecting from this point
+      const projectedValue = calculateProjectedValue(
+        currentValue,
+        monthlyInvestment,
+        annualReturnRate,
+        0, // 0 months from start = today
+      );
+
       progressMap.set(goal.id, {
         goalId: goal.id,
         currentValue,
         targetAmount: goal.targetAmount,
         progress,
         expectedProgress: 0,
-        isOnTrack: true,
+        isOnTrack: isGoalOnTrack(currentValue, projectedValue),
+        projectedValue,
       });
     });
 

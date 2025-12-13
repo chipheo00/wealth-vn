@@ -1,3 +1,4 @@
+import { MetricDisplay } from "@/components/metric-display";
 import { getGoals, getGoalsAllocation } from "@/commands/goal";
 import { useAccounts } from "@/hooks/use-accounts";
 import { formatTimeRemaining } from "@/lib/date-utils";
@@ -7,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatedToggleGroup, Button, formatAmount, Icons, Page, Skeleton } from "@wealthvn/ui";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Area,
   AreaChart,
@@ -22,6 +24,7 @@ import { GoalEditModal } from "./components/goal-edit-modal";
 import { useGoalMutations } from "./use-goal-mutations";
 import { useGoalProgress } from "./use-goal-progress";
 import { TimePeriodOption, useGoalValuationHistory } from "./use-goal-valuation-history";
+import { isGoalOnTrack } from "./lib/goal-utils";
 
 const TIME_PERIOD_OPTIONS = [
   { value: "months" as const, label: "Months" },
@@ -29,6 +32,7 @@ const TIME_PERIOD_OPTIONS = [
 ];
 
 export default function GoalDetailsPage() {
+  const { t } = useTranslation("goals");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -76,6 +80,18 @@ export default function GoalDetailsPage() {
   const currentAmount = goalProgress?.currentValue ?? 0;
   const progress = goalProgress?.progress ?? 0;
 
+  // Get projected future value (last value in chart data)
+  const projectedFutureValue = chartData.length > 0 ? chartData[chartData.length - 1]?.projected ?? 0 : 0;
+
+  // Get projected value at today's date for on-track determination
+  const today = new Date().toISOString().split("T")[0];
+  const todayChartData = chartData.find((d) => d.date === today);
+  const projectedValueToday = todayChartData?.projected ?? currentAmount;
+
+  // Determine if goal is on track: currentAmount >= projectedValueToday
+  const onTrack = isGoalOnTrack(currentAmount, projectedValueToday);
+  const actualColor = onTrack ? "var(--chart-actual-on-track)" : "var(--chart-actual-off-track)";
+
   const handleAddAllocation = (allocationData: GoalAllocation[]) => {
     saveAllocationsMutation.mutate(allocationData);
   };
@@ -110,34 +126,13 @@ export default function GoalDetailsPage() {
         </div>
       </div>
 
-      {/* Top Card */}
-      <div className="bg-card border-border flex flex-col justify-between rounded-xl border p-6 shadow-sm md:flex-row md:items-center">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-full">
-            <Icons.Goal className="text-primary h-8 w-8" />
-          </div>
-          <div>
-            <h2 className="text-foreground text-xl font-bold">{goal.title}</h2>
-            <p className="text-muted-foreground text-sm">Target Amount</p>
-          </div>
-        </div>
-        <div className="mt-4 text-right md:mt-0">
-          <div className="text-primary font-mono text-3xl font-bold">
-            {formatAmount(goal.targetAmount, "USD", false)}
-          </div>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Current Progress:{" "}
-            <span className="text-foreground font-bold">{progress.toFixed(1)}%</span>
-            {" • "}
-            {formatAmount(currentAmount, "USD", false)}
-          </p>
-        </div>
-      </div>
 
-      {/* Chart & Stats Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="bg-card border-border rounded-xl border p-6 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
+
+      {/* Chart & Stats Grid - Account Page Layout */}
+      <div className="grid grid-cols-1 gap-4 pt-0 md:grid-cols-3">
+        {/* Chart Card - 2 columns on desktop */}
+        <div className="col-span-1 rounded-xl border border-border bg-card shadow-sm md:col-span-2">
+          <div className="border-b border-border px-6 py-4 flex items-center justify-between">
             <h3 className="text-foreground text-lg font-bold">Growth Projection</h3>
             <AnimatedToggleGroup
               items={TIME_PERIOD_OPTIONS}
@@ -147,131 +142,188 @@ export default function GoalDetailsPage() {
               size="sm"
             />
           </div>
-          <div className="h-[300px] w-full">
-            {isChartLoading ? (
-              <div className="flex h-full items-center justify-center">
-                <Skeleton className="h-full w-full" />
-              </div>
-            ) : chartData.length === 0 ? (
-              <div className="text-muted-foreground flex h-full flex-col items-center justify-center">
-                <Icons.TrendingUp className="mb-2 h-12 w-12 opacity-50" />
-                <p>No data available</p>
-                <p className="text-sm">Add allocations to see growth projection</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorProjected" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="hsl(var(--border))"
-                    strokeOpacity={0.5}
-                  />
-                  <XAxis
-                    dataKey="dateLabel"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    tickFormatter={(value) => {
-                      if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
-                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                      return value.toString();
-                    }}
-                    width={60}
-                  />
-                  <Tooltip
-                    cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
-                    contentStyle={{
-                      borderRadius: "8px",
-                      border: "1px solid hsl(var(--border))",
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                      backgroundColor: "hsl(var(--popover))",
-                      color: "hsl(var(--popover-foreground))",
-                      padding: "12px",
-                    }}
-                    formatter={(value, name) => [
-                      formatTooltipValue(typeof value === "number" ? value : null),
-                      name === "projected" ? "Projected Growth" : "Actual Value",
-                    ]}
-                    labelFormatter={(label) => label}
-                  />
-                  <Legend
-                    verticalAlign="top"
-                    align="right"
-                    height={36}
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value) =>
-                      value === "projected" ? "Projected Growth" : "Actual Value"
-                    }
-                    wrapperStyle={{ fontSize: "12px", fontFamily: "monospace" }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="projected"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    fill="url(#colorProjected)"
-                    name="projected"
-                    connectNulls
-                    dot={false}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    fill="url(#colorActual)"
-                    name="actual"
-                    connectNulls
-                    dot={false}
-                    activeDot={{ r: 4, strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
+          <div className="p-0">
+            <div className="h-[480px] w-full">
+              {isChartLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <Skeleton className="h-full w-full" />
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="text-muted-foreground flex h-full flex-col items-center justify-center">
+                  <Icons.TrendingUp className="mb-2 h-12 w-12 opacity-50" />
+                  <p>No data available</p>
+                  <p className="text-sm">Add allocations to see growth projection</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorProjected" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--chart-projected)" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="var(--chart-projected)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={actualColor} stopOpacity={0.2} />
+                        <stop offset="100%" stopColor={actualColor} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="hsl(var(--border))"
+                      strokeOpacity={0.5}
+                    />
+                    <XAxis
+                      dataKey="dateLabel"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "currentColor" }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "currentColor" }}
+                      tickFormatter={(value) => {
+                        if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                        return value.toString();
+                      }}
+                      width={60}
+                    />
+                    <Tooltip
+                      cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "1px solid hsl(var(--border))",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                        backgroundColor: "hsl(var(--popover))",
+                        color: "hsl(var(--popover-foreground))",
+                        padding: "12px",
+                      }}
+                      formatter={(value, name) => [
+                        formatTooltipValue(typeof value === "number" ? value : null),
+                        name === "projected" ? "Projected Growth" : "Actual Value",
+                      ]}
+                      labelFormatter={(label) => label}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      height={36}
+                      iconType="circle"
+                      iconSize={8}
+                      formatter={(value) =>
+                        value === "projected" ? "Projected Growth" : "Actual Value"
+                      }
+                      wrapperStyle={{ fontSize: "12px", fontFamily: "monospace" }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="projected"
+                      stroke="var(--chart-projected)"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      fill="url(#colorProjected)"
+                      name="projected"
+                      connectNulls
+                      dot={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="actual"
+                      stroke={actualColor}
+                      strokeWidth={2}
+                      fill="url(#colorActual)"
+                      name="actual"
+                      connectNulls
+                      dot={false}
+                      activeDot={{ r: 4, strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-card border-border rounded-xl border p-4">
-            <div className="text-muted-foreground mb-1 text-xs">Monthly Investment (DCA)</div>
-            <div className="text-foreground font-mono text-xl font-bold">
-              {goal.monthlyInvestment
-                ? formatAmount(goal.monthlyInvestment, "USD", false)
-                : "Not set"}
-            </div>
-            <div className="text-muted-foreground mt-1 text-xs">Regular monthly investment</div>
+        {/* Info Card - 1 column on desktop */}
+        <div className="col-span-1 rounded-xl border border-border bg-card shadow-sm flex flex-col">
+          <div className="border-b border-border px-6 py-4">
+            <h3 className="text-foreground text-lg font-bold">Overview</h3>
           </div>
-          <div className="bg-card border-border rounded-xl border p-4">
-            <div className="text-muted-foreground mb-1 text-xs">Target Return Rate</div>
-            <div className="text-foreground font-mono text-xl font-bold">
-              {goal.targetReturnRate ? `${goal.targetReturnRate}%` : "Not set"}
-              <span className="text-muted-foreground text-xs font-normal">/ year</span>
+          <div className="p-6 space-y-6 flex-1 flex flex-col">
+            {/* Target Amount & Progress */}
+            <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
+              <div className="flex-1 space-y-3">
+                <div>
+                  <p className="text-muted-foreground text-xs font-mono mb-1">Target Amount</p>
+                  <p className="font-mono text-2xl font-bold" style={{ color: "var(--chart-projected)" }}>
+                    {formatAmount(goal.targetAmount, "USD", false)}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-muted-foreground text-xs">Current Progress</p>
+                  <p className="font-mono text-sm font-medium">
+                    <span className="font-bold" style={{ color: actualColor }}>{progress.toFixed(1)}%</span> - <span style={{ color: actualColor }}>{formatAmount(currentAmount, "USD", false)}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Icons.Goal className="text-primary h-6 w-6" />
+              </div>
             </div>
-          </div>
-          <div className="bg-card border-border rounded-xl border p-4">
-            <div className="text-muted-foreground mb-1 text-xs">Time Remaining</div>
-            <div className="text-foreground font-mono text-xl font-bold">
-              {formatTimeRemaining(goal.dueDate)}
+
+            {/* Metrics Grid - 2x2 */}
+            <div className="grid grid-cols-2 gap-3">
+              <MetricDisplay
+                label="Monthly Investment (DCA)"
+                value={undefined}
+                className="border-muted/30 bg-muted/30 rounded-md border"
+                labelComponent={
+                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
+                    <span className="text-center">Monthly Investment</span>
+                    <span className="text-foreground font-mono font-bold text-sm">
+                      {goal.monthlyInvestment
+                        ? formatAmount(goal.monthlyInvestment, "USD", false)
+                        : "Not set"}
+                    </span>
+                  </div>
+                }
+              />
+              <MetricDisplay
+                label="Target Return Rate"
+                value={goal.targetReturnRate ? goal.targetReturnRate / 100 : 0}
+                isPercentage={true}
+                className="border-muted/30 bg-muted/30 rounded-md border"
+              />
+              <MetricDisplay
+                label="Time Remaining"
+                value={undefined}
+                className="border-muted/30 bg-muted/30 rounded-md border"
+                labelComponent={
+                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
+                    <span className="text-center">Time Remaining</span>
+                    <span className="text-foreground font-mono font-bold text-sm">
+                      {formatTimeRemaining(goal.dueDate)}
+                    </span>
+                  </div>
+                }
+              />
+              <MetricDisplay
+                label="Projected Future Value"
+                value={undefined}
+                className="border-muted/30 bg-muted/30 rounded-md border"
+                labelComponent={
+                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
+                    <span className="text-center">Projected Future Value</span>
+                    <span className="font-mono font-bold text-sm" style={{ color: "var(--chart-projected)" }}>
+                      {formatAmount(projectedFutureValue, "USD", false)}
+                    </span>
+                  </div>
+                }
+              />
             </div>
           </div>
         </div>

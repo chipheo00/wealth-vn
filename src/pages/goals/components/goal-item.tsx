@@ -21,12 +21,12 @@ export function GoalItem({ goal, currentValue = 0, progress = 0, isOnTrack = tru
   // Determine the track status text and color
   const getTrackStatus = () => {
     if (goal.isAchieved) {
-      return { text: "Done", className: "text-green-600 dark:text-green-400" };
+      return { text: "Done", colorVar: "var(--success)" };
     }
     if (isOnTrack) {
-      return { text: "On track", className: "text-primary" };
+      return { text: "On track", colorVar: "var(--chart-actual-on-track)" };
     }
-    return { text: "Off track", className: "text-amber-600 dark:text-amber-400" };
+    return { text: "Off track", colorVar: "var(--chart-actual-off-track)" };
   };
 
   const trackStatus = getTrackStatus();
@@ -76,7 +76,7 @@ export function GoalItem({ goal, currentValue = 0, progress = 0, isOnTrack = tru
               </span>
             </div>
             <div className="text-right">
-              <span className={cn("inline-block text-xs font-semibold", trackStatus.className)}>
+              <span className="inline-block text-xs font-semibold" style={{ color: trackStatus.colorVar }}>
                 {trackStatus.text}
               </span>
             </div>
