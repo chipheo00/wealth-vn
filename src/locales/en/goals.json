@@ -61,6 +61,11 @@
       "cancel": "Cancel",
       "add": "Add Goal",
       "update": "Update Goal"
+    },
+    "postCreation": {
+      "success": "Goal created successfully!",
+      "description": "Would you like to allocate accounts to fund this goal?",
+      "addAllocations": "Add Allocations"
     }
   },
   "progress": {
@@ -76,6 +81,7 @@
   "allocations": {
     "tableHeader": "Account",
     "totalRow": "Total",
+    "config": "Config Allocation",
     "saveButton": "Save Allocations",
     "toast": {
       "errorTitle": "Total allocation cannot exceed 100%"
@@ -137,7 +143,10 @@
     "current": "Current",
     "target": "Target",
     "notStarted": "Not Started",
-    "overdue": "Overdue"
+    "overdue": "Overdue",
+    "noAllocations": "No allocation",
+    "noAllocationsTooltip": "This goal has no account allocations yet",
+    "allocationTooltip": "{{percent}}% average allocation across {{count}} account(s)"
   },
   "time": {
     "notSet": "Not set",
@@ -150,5 +159,59 @@
     "day": "Day",
     "days": "Days",
     "lessThanADay": "Less than a day"
+  },
+  "allocationPage": {
+    "title": "Goal Allocations",
+    "description": "Manage how your accounts fund each goal over time",
+    "view": "View",
+    "timeline": "Timeline",
+    "table": "Table"
+  },
+  "allocationTable": {
+    "goal": "Goal",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "peakTotal": "Peak Total",
+    "edit": "Edit"
+  },
+  "editModal": {
+    "title": "Edit Allocations: {{title}}",
+    "goalTimeline": "Goal Timeline",
+    "target": "Target",
+    "allocationsHeading": "Allocations",
+    "addAllocation": "Add Allocation",
+    "validation": "Validation",
+    "allValid": "All allocations valid",
+    "conflictsDetected": "Cannot save: {{count}} conflict(s) detected",
+    "cancel": "Cancel",
+    "save": "Save Changes"
+  },
+  "allocationRow": {
+    "account": "Account",
+    "percentage": "Percentage",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "selectAccount": "Select account",
+    "noConflicts": "No conflicts"
+  },
+  "conflict": {
+    "title": "Conflict: Total allocation exceeds 100%",
+    "during": "During {{start}} - {{end}}:",
+    "thisAllocation": "This allocation",
+    "total": "Total",
+    "exceedsBy": "(exceeds by {{amount}}%)",
+    "maxAvailable": "Max available",
+    "setToMax": "Set to {{value}}%"
+  },
+  "accountHealth": {
+    "title": "Account Health",
+    "allocated": "Allocated"
+  },
+  "prompt": {
+    "goalCreated": "Goal created!",
+    "addAllocationsQuestion": "Would you like to add account allocations now?",
+    "allocationsExplanation": "Allocations determine which accounts fund this goal and what percentage of each account's growth counts toward your goal.",
+    "skipForNow": "Skip for now",
+    "addAllocations": "Add Allocations"
   }
 }

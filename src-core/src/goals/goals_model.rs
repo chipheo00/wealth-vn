@@ -67,9 +67,40 @@ pub struct NewGoal {
 #[serde(rename_all = "camelCase")]
 pub struct GoalsAllocation {
     pub id: String,
+    pub percent_allocation: i32, // DEPRECATED: kept for backward compatibility
     pub goal_id: String,
     pub account_id: String,
-    pub percent_allocation: i32,
-    pub start_date: Option<String>,
-    pub end_date: Option<String>,
+    pub start_date: Option<String>, // DEPRECATED: use allocation_date instead
+    pub end_date: Option<String>, // DEPRECATED: use allocation_versions instead
+    pub init_amount: f64, // Fixed initial allocation amount
+    pub allocation_amount: f64, // Current allocated amount
+    pub allocation_percentage: f64, // Allocation percentage (0-100)
+    pub allocation_date: Option<String>, // When this allocation started
+}
+
+#[derive(
+    Insertable,
+    Queryable,
+    Identifiable,
+    Associations,
+    AsChangeset,
+    Selectable,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+)]
+#[diesel(belongs_to(GoalsAllocation, foreign_key = allocation_id))]
+#[diesel(table_name = crate::schema::allocation_versions)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+#[serde(rename_all = "camelCase")]
+pub struct AllocationVersion {
+    pub id: String,
+    pub allocation_id: String,
+    pub allocation_percentage: f64,
+    pub allocation_amount: f64,
+    pub version_start_date: String,
+    pub version_end_date: Option<String>,
+    pub created_at: String,
 }

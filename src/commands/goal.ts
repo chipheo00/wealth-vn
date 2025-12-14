@@ -204,3 +204,21 @@ export const validateAllocationConflict = async (
     throw error;
   }
 };
+
+export const deleteGoalAllocation = async (allocationId: string): Promise<void> => {
+  try {
+    switch (getRunEnv()) {
+      case RUN_ENV.DESKTOP:
+        await invokeTauri("delete_goal_allocation", { allocationId });
+        return;
+      case RUN_ENV.WEB:
+        await invokeWeb("delete_goal_allocation", { allocationId });
+        return;
+      default:
+        throw new Error(`Unsupported`);
+    }
+  } catch (error) {
+    logger.error("Error deleting goal allocation.");
+    throw error;
+  }
+};

@@ -32,10 +32,13 @@ impl<T: GoalRepositoryTrait> GoalService<T> {
         new_percent_allocation: i32,
         exclude_allocation_id: Option<&str>,
     ) -> Result<()> {
+        // DEPRECATED: This method uses old percent_allocation field
+        // Use validate_allocation_percentages() instead for new hybrid system
+        
         // Get allocations that overlap with the new allocation's date range
         let allocations = self.goal_repo.load_allocations_for_non_achieved_goals()?;
 
-        let mut conflicting_percent = new_percent_allocation;
+        let mut conflicting_percent = new_percent_allocation as f64;
 
         for allocation in allocations {
             if allocation.account_id != account_id {
@@ -52,16 +55,17 @@ impl<T: GoalRepositoryTrait> GoalService<T> {
                             continue;
                         }
                     }
-                    conflicting_percent += allocation.percent_allocation;
+                    // Use new allocation_percentage field
+                    conflicting_percent += allocation.allocation_percentage;
                 }
             }
         }
 
-        if conflicting_percent > 100 {
+        if conflicting_percent > 100.0 {
             return Err(crate::errors::Error::Validation(
                 crate::errors::ValidationError::InvalidInput(
                     format!(
-                        "Total allocation {}% exceeds 100% on account {} during this period",
+                        "Total allocation {:.1}% exceeds 100% on account {} during this period",
                         conflicting_percent, account_id
                     )
                 )
@@ -168,6 +172,160 @@ impl<T: GoalRepositoryTrait> GoalService<T> {
             })
             .collect())
     }
+
+    /// Get unallocated balance for an account on a given date
+    /// Unallocated = account_current_value - sum(all_goal_allocations)
+    pub fn get_unallocated_balance(
+        &self,
+        account_id: &str,
+        current_account_value: f64,
+    ) -> Result<f64> {
+        let allocations = self.goal_repo.get_allocations_for_account(account_id)?;
+        
+        let total_allocated: f64 = allocations
+            .iter()
+            .map(|a| a.allocation_amount)
+            .sum();
+
+        Ok((current_account_value - total_allocated).max(0.0))
+    }
+
+    /// Validate that unallocated balance is sufficient for a new allocation
+    pub fn validate_unallocated_balance(
+        &self,
+        account_id: &str,
+        allocation_amount: f64,
+        current_account_value: f64,
+    ) -> Result<()> {
+        let unallocated = self.get_unallocated_balance(account_id, current_account_value)?;
+        
+        if allocation_amount > unallocated {
+            return Err(crate::errors::Error::Validation(
+                crate::errors::ValidationError::InvalidInput(
+                    format!(
+                        "Allocation amount ${} exceeds available unallocated balance ${:.2}",
+                        allocation_amount, unallocated
+                    )
+                )
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate that total allocation percentages don't exceed 100%
+    pub fn validate_allocation_percentages(
+        &self,
+        account_id: &str,
+        new_percentage: f64,
+        exclude_allocation_id: Option<&str>,
+    ) -> Result<()> {
+        let allocations = self.goal_repo.get_allocations_for_account(account_id)?;
+        
+        let mut total_percent = new_percentage;
+        
+        for allocation in allocations {
+            // Skip the allocation being updated
+            if let Some(exclude_id) = exclude_allocation_id {
+                if allocation.id == exclude_id {
+                    continue;
+                }
+            }
+            total_percent += allocation.allocation_percentage;
+        }
+
+        if total_percent > 100.0 {
+            return Err(crate::errors::Error::Validation(
+                crate::errors::ValidationError::InvalidInput(
+                    format!(
+                        "Total allocation percentage {:.1}% exceeds 100% on account {}",
+                        total_percent, account_id
+                    )
+                )
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Calculate growth for an allocation over a period
+    /// growth = (account_value_end - account_value_start) * allocation_percentage / 100
+    pub fn calculate_allocation_growth(
+        &self,
+        allocation_percentage: f64,
+        account_value_start: f64,
+        account_value_end: f64,
+    ) -> f64 {
+        let account_growth = account_value_end - account_value_start;
+        account_growth * (allocation_percentage / 100.0)
+    }
+
+    /// Calculate segmented growth based on allocation version history
+    /// Returns total growth across all periods with different allocation percentages
+    pub fn calculate_segmented_growth(
+        &self,
+        allocation_values: &[(f64, f64, f64)], // (allocation_percentage, value_start, value_end)
+    ) -> f64 {
+        allocation_values
+            .iter()
+            .map(|(percentage, start, end)| {
+                self.calculate_allocation_growth(*percentage, *start, *end)
+            })
+            .sum()
+    }
+
+    /// Get current value for an allocation (init_amount + growth)
+    pub fn calculate_allocation_current_value(
+        &self,
+        allocation: &GoalsAllocation,
+        allocation_growth: f64,
+    ) -> f64 {
+        allocation.init_amount + allocation_growth
+    }
+
+    /// Validate historical allocation constraints
+    /// Ensures that at the time of allocation, it didn't exceed available balance
+    pub fn validate_historical_allocation(
+        &self,
+        account_id: &str,
+        allocation_amount: f64,
+        allocation_date: &str,
+        account_value_at_allocation_date: f64,
+    ) -> Result<()> {
+        // Get all allocations for this account
+        let allocations = self.goal_repo.get_allocations_for_account(account_id)?;
+        
+        // Sum up allocations that were active on the allocation_date
+        let mut total_allocated_at_date = 0.0;
+        
+        for alloc in &allocations {
+            // Check if this allocation was active on allocation_date
+            if let Some(alloc_date) = &alloc.allocation_date {
+                if alloc_date.as_str() <= allocation_date {
+                    // This allocation was already active, check if it was still active
+                    // For simplicity, assume if allocation_date exists, it's active until explicitly removed
+                    total_allocated_at_date += alloc.init_amount;
+                }
+            }
+        }
+
+        // Add the new allocation
+        total_allocated_at_date += allocation_amount;
+
+        // Check if total exceeds account value at that time
+        if total_allocated_at_date > account_value_at_allocation_date {
+            return Err(crate::errors::Error::Validation(
+                crate::errors::ValidationError::InvalidInput(
+                    format!(
+                        "On {}, total allocation ${:.2} would exceed account value ${:.2}",
+                        allocation_date, total_allocated_at_date, account_value_at_allocation_date
+                    )
+                )
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -214,5 +372,32 @@ impl<T: GoalRepositoryTrait + Send + Sync> GoalServiceTrait for GoalService<T> {
 
     fn load_goals_allocations(&self) -> Result<Vec<GoalsAllocation>> {
         self.goal_repo.load_allocations_for_non_achieved_goals()
+    }
+
+    fn validate_allocation_conflicts(
+        &self,
+        account_id: &str,
+        start_date: &str,
+        end_date: &str,
+        percent_allocation: i32,
+        exclude_allocation_id: Option<&str>,
+    ) -> Result<()> {
+        self.validate_allocation_conflicts(account_id, start_date, end_date, percent_allocation, exclude_allocation_id)
+    }
+
+    fn get_unallocated_balance(&self, account_id: &str, current_account_value: f64) -> Result<f64> {
+        self.get_unallocated_balance(account_id, current_account_value)
+    }
+
+    fn validate_unallocated_balance(&self, account_id: &str, allocation_amount: f64, current_account_value: f64) -> Result<()> {
+        self.validate_unallocated_balance(account_id, allocation_amount, current_account_value)
+    }
+
+    fn validate_allocation_percentages(&self, account_id: &str, new_percentage: f64, exclude_allocation_id: Option<&str>) -> Result<()> {
+        self.validate_allocation_percentages(account_id, new_percentage, exclude_allocation_id)
+    }
+
+    fn get_repository(&self) -> &dyn GoalRepositoryTrait {
+        self.goal_repo.as_ref()
     }
 }

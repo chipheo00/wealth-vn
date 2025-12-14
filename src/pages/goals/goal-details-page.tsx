@@ -1,6 +1,7 @@
 import { getGoals, getGoalsAllocation } from "@/commands/goal";
 import { MetricDisplay } from "@/components/metric-display";
 import { useAccounts } from "@/hooks/use-accounts";
+import { useLatestValuations } from "@/hooks/use-latest-valuations";
 import { formatTimeRemaining } from "@/lib/date-utils";
 import { QueryKeys } from "@/lib/query-keys";
 import type { Goal, GoalAllocation } from "@/lib/types";
@@ -19,35 +20,46 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import GoalsAllocations from "./components/goal-allocations";
 import { GoalEditModal } from "./components/goal-edit-modal";
+import { AllocationHistoryTable } from "./components/allocation-history-table";
+import { AddAllocationModal } from "./components/add-allocation-modal";
+import GoalsAllocations from "./components/goal-allocations";
 import { isGoalOnTrack } from "./lib/goal-utils";
-import { useGoalMutations } from "./use-goal-mutations";
 import { useGoalProgress } from "./use-goal-progress";
 import { TimePeriodOption, useGoalValuationHistory } from "./use-goal-valuation-history";
-
-
+import { useGoalMutations } from "./use-goal-mutations";
 
 export default function GoalDetailsPage() {
-   const { t } = useTranslation("goals");
-   const { id } = useParams<{ id: string }>();
-   const navigate = useNavigate();
+  const { t } = useTranslation("goals");
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-   const { data: goals, isLoading: isGoalsLoading } = useQuery<Goal[], Error>({
-     queryKey: [QueryKeys.GOALS],
-     queryFn: getGoals,
-   });
+  const { data: goals, isLoading: isGoalsLoading } = useQuery<Goal[], Error>({
+    queryKey: [QueryKeys.GOALS],
+    queryFn: getGoals,
+  });
 
-   const { data: allocations, isLoading: isAllocationsLoading } = useQuery<GoalAllocation[], Error>({
-     queryKey: [QueryKeys.GOALS_ALLOCATIONS],
-     queryFn: getGoalsAllocation,
-   });
+  const { data: allocations, isLoading: isAllocationsLoading } = useQuery<GoalAllocation[], Error>({
+    queryKey: [QueryKeys.GOALS_ALLOCATIONS],
+    queryFn: getGoalsAllocation,
+  });
 
-   const { accounts } = useAccounts();
-   const [visibleModal, setVisibleModal] = useState(false);
-   const [timePeriod, setTimePeriod] = useState<TimePeriodOption>("months");
-  const { saveAllocationsMutation } = useGoalMutations();
+  const { accounts } = useAccounts();
+  
+  // Fetch latest valuations for accounts
+  const accountIds = accounts?.map(acc => acc.id) || [];
+  const { latestValuations } = useLatestValuations(accountIds);
+  
+  // Build current account values map from valuations (not from account.balance which may be stale)
+  const currentAccountValuesFromValuations = new Map(
+    (latestValuations || []).map(val => [val.accountId, val.totalValue])
+  );
+  
+  const [visibleModal, setVisibleModal] = useState(false);
+  const [isCreatingAllocation, setIsCreatingAllocation] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriodOption>("months");
   const { getGoalProgress } = useGoalProgress(goals);
+  const { updateAllocationMutation, deleteAllocationMutation } = useGoalMutations();
 
   const goal = goals?.find((g) => g.id === id);
   const goalProgress = id ? getGoalProgress(id) : undefined;
@@ -86,12 +98,12 @@ export default function GoalDetailsPage() {
   const progress = goalProgress?.progress ?? 0;
 
   // Get projected future value (last value in chart data)
-  const projectedFutureValue = chartData.length > 0 ? chartData[chartData.length - 1]?.projected ?? 0 : 0;
+  const projectedFutureValue =
+    chartData.length > 0 ? (chartData[chartData.length - 1]?.projected ?? 0) : 0;
 
   // Get projected value at today's date for on-track determination
   // Find the closest data point to today (since we use end-of-period dates)
   const today = new Date();
-  const todayDateStr = today.toISOString().split("T")[0];
   let projectedValueToday = currentAmount;
 
   if (chartData.length > 0) {
@@ -107,9 +119,7 @@ export default function GoalDetailsPage() {
   const onTrack = isGoalOnTrack(currentAmount, projectedValueToday);
   const actualColor = onTrack ? "var(--chart-actual-on-track)" : "var(--chart-actual-off-track)";
 
-  const handleAddAllocation = (allocationData: GoalAllocation[]) => {
-    saveAllocationsMutation.mutate(allocationData);
-  };
+
 
   // Format tooltip value
   const formatTooltipValue = (value: number | null) => {
@@ -141,14 +151,14 @@ export default function GoalDetailsPage() {
         </div>
       </div>
 
-
-
       {/* Chart & Stats Grid - Account Page Layout */}
       <div className="grid grid-cols-1 gap-4 pt-0 md:grid-cols-3">
         {/* Chart Card - 2 columns on desktop */}
-        <div className="col-span-1 rounded-xl border border-border bg-card shadow-sm md:col-span-2">
-          <div className="border-b border-border px-6 py-4 flex items-center justify-between">
-            <h3 className="text-foreground text-lg font-bold">{t("details.chart.growthProjection")}</h3>
+        <div className="border-border bg-card col-span-1 rounded-xl border shadow-sm md:col-span-2">
+          <div className="border-border flex items-center justify-between border-b px-6 py-4">
+            <h3 className="text-foreground text-lg font-bold">
+              {t("details.chart.growthProjection")}
+            </h3>
             <AnimatedToggleGroup
               items={timePeriodOptions}
               value={timePeriod}
@@ -219,7 +229,9 @@ export default function GoalDetailsPage() {
                       }}
                       formatter={(value, name) => [
                         formatTooltipValue(typeof value === "number" ? value : null),
-                        name === "projected" ? t("details.chart.projectedGrowth") : t("details.chart.actualValue"),
+                        name === "projected"
+                          ? t("details.chart.projectedGrowth")
+                          : t("details.chart.actualValue"),
                       ]}
                       labelFormatter={(label) => label}
                     />
@@ -230,7 +242,9 @@ export default function GoalDetailsPage() {
                       iconType="circle"
                       iconSize={8}
                       formatter={(value) =>
-                        value === "projected" ? t("details.chart.projectedGrowth") : t("details.chart.actualValue")
+                        value === "projected"
+                          ? t("details.chart.projectedGrowth")
+                          : t("details.chart.actualValue")
                       }
                       wrapperStyle={{ fontSize: "12px" }}
                     />
@@ -264,36 +278,48 @@ export default function GoalDetailsPage() {
         </div>
 
         {/* Info Card - 1 column on desktop */}
-        <div className="col-span-1 rounded-xl border border-border bg-card shadow-sm flex flex-col">
-          <div className="border-b border-border px-6 py-4">
+        <div className="border-border bg-card col-span-1 flex flex-col rounded-xl border shadow-sm">
+          <div className="border-border border-b px-6 py-4">
             <h3 className="text-foreground text-lg font-bold">{t("details.overview.title")}</h3>
           </div>
-          <div className="p-6 space-y-6 flex-1 flex flex-col">
+          <div className="flex flex-1 flex-col space-y-6 p-6">
             {/* Target Amount & Progress */}
-            <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
+            <div className="border-border flex items-start justify-between gap-4 border-b pb-6">
               <div className="flex-1 space-y-3">
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">{t("details.overview.targetAmount")}</p>
+                  <p className="text-muted-foreground mb-1 text-xs">
+                    {t("details.overview.targetAmount")}
+                  </p>
                   <p className="text-2xl font-bold" style={{ color: "var(--chart-projected)" }}>
                     {formatAmount(goal.targetAmount, "USD", false)}
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-muted-foreground text-xs">{t("details.overview.currentProgress")}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {t("details.overview.currentProgress")}
+                  </p>
                   <p className="text-sm font-medium">
-                    <span className="font-bold" style={{ color: actualColor }}>{progress.toFixed(1)}%</span> - <span style={{ color: actualColor }}>{formatAmount(currentAmount, "USD", false)}</span>
+                    <span className="font-bold" style={{ color: actualColor }}>
+                      {progress.toFixed(1)}%
+                    </span>{" "}
+                    -{" "}
+                    <span style={{ color: actualColor }}>
+                      {formatAmount(currentAmount, "USD", false)}
+                    </span>
                   </p>
                 </div>
               </div>
-              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <div className="bg-primary/10 flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full">
                 <Icons.Goal className="text-primary h-6 w-6" />
               </div>
             </div>
 
             {/* Description - if exists */}
             {goal.description && (
-              <div className="pb-6 border-b border-border">
-                <p className="text-muted-foreground text-xs mb-2">{t("details.overview.description")}</p>
+              <div className="border-border border-b pb-6">
+                <p className="text-muted-foreground mb-2 text-xs">
+                  {t("details.overview.description")}
+                </p>
                 <div
                   style={{
                     overflow: "hidden",
@@ -315,9 +341,9 @@ export default function GoalDetailsPage() {
                 value={undefined}
                 className="border-muted/30 bg-muted/30 rounded-md border"
                 labelComponent={
-                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
+                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center space-y-2 text-xs">
                     <span className="text-center">{t("details.metrics.monthlyInvestment")}</span>
-                    <span className="text-foreground font-bold text-sm">
+                    <span className="text-foreground text-sm font-bold">
                       {goal.monthlyInvestment
                         ? formatAmount(goal.monthlyInvestment, "USD", false)
                         : t("details.metrics.notSet")}
@@ -336,9 +362,9 @@ export default function GoalDetailsPage() {
                 value={undefined}
                 className="border-muted/30 bg-muted/30 rounded-md border"
                 labelComponent={
-                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
+                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center space-y-2 text-xs">
                     <span className="text-center">{t("details.metrics.timeRemaining")}</span>
-                    <span className="text-foreground font-bold text-sm">
+                    <span className="text-foreground text-sm font-bold">
                       {formatTimeRemaining(goal.dueDate, t)}
                     </span>
                   </div>
@@ -349,9 +375,9 @@ export default function GoalDetailsPage() {
                 value={undefined}
                 className="border-muted/30 bg-muted/30 rounded-md border"
                 labelComponent={
-                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center text-xs space-y-2">
+                  <div className="text-muted-foreground flex w-full flex-col items-center justify-center space-y-2 text-xs">
                     <span className="text-center">{t("details.metrics.projectedFutureValue")}</span>
-                    <span className="font-bold text-sm" style={{ color: "var(--chart-projected)" }}>
+                    <span className="text-sm font-bold" style={{ color: "var(--chart-projected)" }}>
                       {formatAmount(projectedFutureValue, "USD", false)}
                     </span>
                   </div>
@@ -362,22 +388,79 @@ export default function GoalDetailsPage() {
         </div>
       </div>
 
-      {/* Allocations Table */}
-      <div className="mb-8">
-        <h3 className="text-foreground mb-2 text-xl font-bold">{t("details.allocations.title")}</h3>
-        <p className="text-muted-foreground mb-4 text-sm">
-          {t("details.allocations.description")}
-        </p>
-        <GoalsAllocations
-          goals={[goal]} // Only pass this goal
-          existingAllocations={allocations || []}
-          accounts={accounts || []}
-          onSubmit={handleAddAllocation}
-          readOnly={true}
-        />
+      {/* Allocations Section */}
+      <div className="mb-8 space-y-8">
+        {/* Allocation Settings - Read Only */}
+        <div>
+          <div className="mb-4 flex items-start justify-between">
+            <div>
+              <h3 className="text-foreground mb-2 text-xl font-bold">Allocation Settings</h3>
+              <p className="text-muted-foreground text-sm">View current allocation percentages for this goal across accounts.</p>
+            </div>
+            <Button onClick={() => setIsCreatingAllocation(true)} variant="default">
+              <Icons.Plus className="mr-2 h-4 w-4" />
+              Add Allocations
+            </Button>
+          </div>
+          {goal && accounts && (
+            <GoalsAllocations
+              goals={[goal]}
+              accounts={accounts || []}
+              existingAllocations={allocations?.filter((a) => a.goalId === id) || []}
+              allAllocations={allocations || []}
+              onSubmit={async () => {}}
+              readOnly={true}
+              showRemaining={true}
+              currentAccountValues={currentAccountValuesFromValuations}
+            />
+          )}
+        </div>
+
+        {/* Current Allocations - With Actions */}
+        <div>
+          <h3 className="text-foreground mb-2 text-xl font-bold">{t("details.allocations.title")}</h3>
+          <p className="text-muted-foreground mb-4 text-sm">{t("details.allocations.description")}</p>
+          <AllocationHistoryTable
+            goalId={id || ""}
+            allocations={allocations?.filter((a) => a.goalId === id) || []}
+            accounts={
+              new Map(
+                accounts?.map((acc) => [
+                  acc.id,
+                  acc,
+                ]) || []
+              )
+            }
+            currentAccountValues={currentAccountValuesFromValuations}
+            onAllocationUpdated={async (allocation) => {
+              await updateAllocationMutation.mutateAsync(allocation);
+            }}
+            onAllocationDeleted={async (allocationId) => {
+              await deleteAllocationMutation.mutateAsync(allocationId);
+            }}
+            readOnly={false}
+          />
+        </div>
       </div>
 
       <GoalEditModal goal={goal} open={visibleModal} onClose={() => setVisibleModal(false)} />
+
+      {/* Add Allocation Modal */}
+      {goal && accounts && (
+        <AddAllocationModal
+          open={isCreatingAllocation}
+          onOpenChange={setIsCreatingAllocation}
+          goal={goal}
+          accounts={accounts}
+          currentAccountValues={currentAccountValuesFromValuations}
+          allAllocations={allocations || []}
+          onSubmit={async (newAllocations) => {
+            for (const allocation of newAllocations) {
+              await updateAllocationMutation.mutateAsync(allocation);
+            }
+          }}
+        />
+      )}
     </Page>
   );
 }

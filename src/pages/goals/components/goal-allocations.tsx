@@ -10,26 +10,43 @@ interface GoalsAllocationsProps {
   goals: Goal[];
   accounts: Account[];
   existingAllocations?: GoalAllocation[];
+  allAllocations?: GoalAllocation[]; // All allocations including other goals
   onSubmit: (allocations: GoalAllocation[]) => void;
   readOnly?: boolean;
+  showRemaining?: boolean;
+  currentAccountValues?: Map<string, number>; // For displaying remaining value in dollars
+  currency?: string; // User's base currency
 }
 
 const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
   goals,
   accounts,
   existingAllocations,
+  allAllocations,
   onSubmit,
   readOnly = false,
+  showRemaining = false,
+  currentAccountValues = new Map(),
+  currency = "USD",
 }) => {
+  console.log("[GoalsAllocations DEBUG]", {
+    currentAccountValues: Object.fromEntries(currentAccountValues),
+    allocations: existingAllocations,
+    allAllocations,
+    currency,
+  });
   const { t } = useTranslation("goals");
   const [allocations, setAllocations] = useState<GoalAllocation[]>(existingAllocations || []);
   const [totalAllocations, setTotalAllocations] = useState<Record<string, number>>({});
   const [isExceeding, setIsExceeding] = useState<boolean>(false);
 
   useEffect(() => {
+    // When showing remaining, calculate from all allocations
+    const sourceAllocations = showRemaining && allAllocations ? allAllocations : allocations;
+    
     const totals = accounts.reduce(
       (acc, account) => {
-        acc[account.id] = allocations.reduce((sum, alloc) => {
+        acc[account.id] = sourceAllocations.reduce((sum, alloc) => {
           if (alloc.accountId === account.id) {
             return sum + (alloc.percentAllocation || 0);
           }
@@ -42,23 +59,29 @@ const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
 
     setTotalAllocations(totals);
     setIsExceeding(Object.values(totals).some((total) => total > 100));
-  }, [allocations, accounts]);
+  }, [allocations, accounts, allAllocations, showRemaining]);
 
   const handleAllocationChange = (goalId: string, accountId: string, value: number) => {
     const updatedAllocations = allocations.map((alloc) =>
       alloc.goalId === goalId && alloc.accountId === accountId
-        ? { ...alloc, percentAllocation: value }
+        ? { ...alloc, percentAllocation: value, allocationPercentage: value }
         : alloc,
     );
     if (
       !updatedAllocations.some((alloc) => alloc.goalId === goalId && alloc.accountId === accountId)
     ) {
-      updatedAllocations.push({
-        id: `${goalId}-${accountId}`,
-        goalId,
-        accountId,
-        percentAllocation: value,
-      });
+      if (value > 0) {
+        // Only add allocation if value is greater than 0 (avoid creating empty allocations)
+        updatedAllocations.push({
+          id: `${goalId}-${accountId}`,
+          goalId,
+          accountId,
+          percentAllocation: value,
+          allocationPercentage: value,
+          allocationAmount: 0,
+          initAmount: 0,
+        } as GoalAllocation);
+      }
     }
     setAllocations(updatedAllocations);
   };
@@ -89,51 +112,114 @@ const GoalsAllocations: React.FC<GoalsAllocationsProps> = ({
                 </th>
               ))}
             </tr>
-            <tr>
-              <td className="bg-muted text-muted-foreground sticky left-0 z-10 border-t border-r px-4 py-2 text-xs">
-                {t("allocations.totalRow")}
-              </td>
-              {accounts.map((account) => (
-                <td
-                  key={account.id}
-                  className={`text-muted-foreground border-t border-l px-4 py-2 text-right text-xs ${
-                    totalAllocations[account.id] > 100 ? "text-destructive" : ""
-                  }`}
-                >
-                  {totalAllocations[account.id]}%
-                </td>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {goals.map((goal) => (
-              <tr key={goal.id} className="border-t">
-                <td className="border-nones bg-muted sticky left-0 z-10 border-r p-0 text-xs font-semibold">
-                  <div className="p-2">
+            {!showRemaining && (
+              <>
+                {/* Unallocated Row */}
+                <tr>
+                  <td className="bg-muted text-muted-foreground sticky left-0 z-10 border-t border-r px-4 py-2 text-xs">
+                    Unallocated
+                  </td>
+                  {accounts.map((account) => {
+                    const remainingPercent = Math.max(0, 100 - totalAllocations[account.id]);
+                    const currentValue = currentAccountValues.get(account.id) || 0;
+                    const totalAllocated = allocations.reduce((sum, alloc) => {
+                      return alloc.accountId === account.id ? sum + (alloc.allocationAmount || 0) : sum;
+                    }, 0);
+                    const remainingValue = Math.max(0, currentValue - totalAllocated);
+                    return (
+                      <td
+                        key={account.id}
+                        className={`text-muted-foreground border-t border-l px-4 py-2 text-right text-xs ${
+                          remainingPercent < 0 ? "text-destructive" : ""
+                        }`}
+                      >
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={remainingPercent < 0 ? "text-destructive font-semibold" : "font-semibold"}>{remainingPercent}%</span>
+                          <span className="text-xs">{formatAmount(remainingValue, currency, false)}</span>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              </>
+            )}
+            {showRemaining && (
+              <>
+                {/* Unallocated Row - Combined Percentage and Value */}
+                <tr>
+                  <td className="bg-muted sticky left-0 z-10 border-t border-r p-0 text-xs font-semibold">
+                    <div className="p-2">
+                      <span>Unallocated</span>
+                    </div>
+                  </td>
+                  {accounts.map((account) => {
+                    const remainingPercent = Math.max(0, 100 - totalAllocations[account.id]);
+                    const currentValue = currentAccountValues.get(account.id) || 0;
+                    const totalAllocated = allocations.reduce((sum, alloc) => {
+                      return alloc.accountId === account.id ? sum + (alloc.allocationAmount || 0) : sum;
+                    }, 0);
+                    const remainingValue = Math.max(0, currentValue - totalAllocated);
+                    return (
+                      <td key={account.id} className="text-muted-foreground border-t border-l px-4 py-2 text-right text-xs">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-semibold">{remainingPercent}%</span>
+                          <span className="text-xs">{formatAmount(remainingValue, currency, false)}</span>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              </>
+            )}
+                    </thead>
+                    <tbody>
+                    {goals.map((goal) => (
+                    <React.Fragment key={goal.id}>
+                    {/* Percentage Allocation Row */}
+                    <tr className="border-t">
+                    <td className="border-nones bg-muted sticky left-0 z-10 border-r p-0 text-xs font-semibold" rowSpan={2}>
+                    <div className="p-2">
                     <span>{goal.title}</span>
                     <p className="text-muted-foreground text-xs font-light">
-                      {formatAmount(goal.targetAmount, "USD", false)}
-                    </p>
-                  </div>
-                </td>
-                {accounts.map((account) => {
-                  const existingAllocation = allocations.find(
-                    (alloc) => alloc.goalId === goal.id && alloc.accountId === account.id,
-                  );
-                  return (
-                    <td key={account.id} className="border-r px-1 py-0">
-                       <Input
-                         className="m-0 h-full w-full rounded-none border-none px-2 text-right text-xs"
-                         value={existingAllocation ? existingAllocation.percentAllocation : ""}
-                         onChange={(e) =>
-                           handleAllocationChange(goal.id, account.id, Number(e.target.value))
-                         }
-                         disabled={readOnly}
-                       />
-                     </td>
-                  );
-                })}
-              </tr>
+                      {formatAmount(goal.targetAmount, currency, false)}
+                      </p>
+                    </div>
+                  </td>
+                  {accounts.map((account) => {
+                    const existingAllocation = allocations.find(
+                      (alloc) => alloc.goalId === goal.id && alloc.accountId === account.id,
+                    );
+                    return (
+                      <td key={account.id} className="border-r px-1 py-0">
+                         <Input
+                           className="m-0 h-full w-full rounded-none border-none px-2 text-right text-xs"
+                           value={existingAllocation ? existingAllocation.percentAllocation : ""}
+                           onChange={(e) =>
+                             handleAllocationChange(goal.id, account.id, Number(e.target.value))
+                           }
+                           disabled={readOnly}
+                           placeholder="%"
+                         />
+                       </td>
+                    );
+                  })}
+                </tr>
+                {/* Initial Contribution Amount Row */}
+                <tr className="border-t">
+                  {accounts.map((account) => {
+                    const existingAllocation = allocations.find(
+                      (alloc) => alloc.goalId === goal.id && alloc.accountId === account.id,
+                    );
+                    return (
+                      <td key={account.id} className="border-r px-1 py-0 text-muted-foreground text-xs">
+                        <div className="px-2 py-1 text-right">
+                          {existingAllocation ? formatAmount(existingAllocation.allocationAmount || 0, currency, false) : "-"}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

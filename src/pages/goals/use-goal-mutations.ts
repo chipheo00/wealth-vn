@@ -1,6 +1,7 @@
 import { logger } from "@/adapters";
-import { createGoal, deleteGoal, updateGoal, updateGoalsAllocations } from "@/commands/goal";
+import { createGoal, deleteGoal, updateGoal, updateGoalsAllocations, deleteGoalAllocation } from "@/commands/goal";
 import { QueryKeys } from "@/lib/query-keys";
+import { GoalAllocation } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -63,10 +64,39 @@ export const useGoalMutations = () => {
     },
   });
 
+  const updateAllocationMutation = useMutation({
+    mutationFn: async (allocation: GoalAllocation) => {
+      // Update a single allocation through the backend
+      await updateGoalsAllocations([allocation]);
+    },
+    onSuccess: () =>
+      handleSuccess("Allocation updated successfully.", [
+        QueryKeys.GOALS_ALLOCATIONS,
+      ]),
+    onError: (e) => {
+      logger.error(`Error updating allocation: ${e}`);
+      handleError("updating the allocation");
+    },
+  });
+
+  const deleteAllocationMutation = useMutation({
+    mutationFn: deleteGoalAllocation,
+    onSuccess: () =>
+      handleSuccess("Allocation deleted successfully.", [
+        QueryKeys.GOALS_ALLOCATIONS,
+      ]),
+    onError: (e) => {
+      logger.error(`Error deleting allocation: ${e}`);
+      handleError("deleting the allocation");
+    },
+  });
+
   return {
     deleteGoalMutation,
     saveAllocationsMutation,
     addGoalMutation,
     updateGoalMutation,
+    updateAllocationMutation,
+    deleteAllocationMutation,
   };
 };

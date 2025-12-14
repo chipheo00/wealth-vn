@@ -61,6 +61,11 @@
       "cancel": "Hủy",
       "add": "Thêm mục tiêu",
       "update": "Cập nhật mục tiêu"
+    },
+    "postCreation": {
+      "success": "Tạo mục tiêu thành công!",
+      "description": "Bạn có muốn phân bổ tài khoản để tài trợ cho mục tiêu này không?",
+      "addAllocations": "Thêm phân bổ"
     }
   },
   "progress": {
@@ -76,6 +81,7 @@
   "allocations": {
     "tableHeader": "Tài khoản",
     "totalRow": "Tổng cộng",
+    "config": "Cấu hình phân bổ",
     "saveButton": "Lưu phân bổ",
     "toast": {
       "errorTitle": "Tổng phân bổ không được vượt quá 100%"
@@ -137,7 +143,10 @@
     "current": "Hiện tại",
     "target": "Mục tiêu",
     "notStarted": "Chưa bắt đầu",
-    "overdue": "Quá hạn"
+    "overdue": "Quá hạn",
+    "noAllocations": "Chưa phân bổ",
+    "noAllocationsTooltip": "Mục tiêu này chưa được phân bổ tài khoản",
+    "allocationTooltip": "{{percent}}% phân bổ trung bình từ {{count}} tài khoản"
   },
   "time": {
     "notSet": "Chưa thiết lập",
@@ -150,5 +159,59 @@
     "day": "Ngày",
     "days": "Ngày",
     "lessThanADay": "Dưới một ngày"
+  },
+  "allocationPage": {
+    "title": "Phân bổ mục tiêu",
+    "description": "Quản lý cách các tài khoản đóng góp cho từng mục tiêu theo thời gian",
+    "view": "Xem",
+    "timeline": "Dòng thời gian",
+    "table": "Bảng"
+  },
+  "allocationTable": {
+    "goal": "Mục tiêu",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "peakTotal": "Tổng cao nhất",
+    "edit": "Sửa"
+  },
+  "editModal": {
+    "title": "Sửa phân bổ: {{title}}",
+    "goalTimeline": "Thời gian mục tiêu",
+    "target": "Mục tiêu",
+    "allocationsHeading": "Phân bổ",
+    "addAllocation": "Thêm phân bổ",
+    "validation": "Xác nhận",
+    "allValid": "Tất cả phân bổ hợp lệ",
+    "conflictsDetected": "Không thể lưu: Phát hiện {{count}} xung đột",
+    "cancel": "Hủy",
+    "save": "Lưu thay đổi"
+  },
+  "allocationRow": {
+    "account": "Tài khoản",
+    "percentage": "Phần trăm",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "selectAccount": "Chọn tài khoản",
+    "noConflicts": "Không có xung đột"
+  },
+  "conflict": {
+    "title": "Xung đột: Tổng phân bổ vượt quá 100%",
+    "during": "Trong khoảng {{start}} - {{end}}:",
+    "thisAllocation": "Phân bổ này",
+    "total": "Tổng",
+    "exceedsBy": "(vượt quá {{amount}}%)",
+    "maxAvailable": "Tối đa khả dụng",
+    "setToMax": "Đặt thành {{value}}%"
+  },
+  "accountHealth": {
+    "title": "Tình trạng tài khoản",
+    "allocated": "Đã phân bổ"
+  },
+  "prompt": {
+    "goalCreated": "Đã tạo mục tiêu!",
+    "addAllocationsQuestion": "Bạn có muốn thêm phân bổ tài khoản ngay bây giờ không?",
+    "allocationsExplanation": "Phân bổ xác định tài khoản nào đóng góp cho mục tiêu này và bao nhiêu phần trăm tăng trưởng của mỗi tài khoản được tính vào mục tiêu của bạn.",
+    "skipForNow": "Bỏ qua",
+    "addAllocations": "Thêm phân bổ"
   }
 }

@@ -3,7 +3,7 @@
  * @param dueDate - ISO string or Date object
  * @returns Formatted string like "4 Years 2 Months" or "3 Months" or "15 Days"
  */
-import { TFunction } from "i18next";
+import type { TFunction } from "i18next";
 
 /**
  * Format the remaining time until a due date
@@ -11,7 +11,11 @@ import { TFunction } from "i18next";
  * @param t - Optional translation function
  * @returns Formatted string like "4 Years 2 Months" or "3 Months" or "15 Days"
  */
-export function formatTimeRemaining(dueDate: string | Date | undefined, t?: TFunction): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function formatTimeRemaining(
+  dueDate: string | Date | undefined,
+  t?: TFunction<any>,
+): string {
   if (!dueDate) return t ? t("time.notSet" as any) : "Not set";
 
   const now = new Date();
@@ -36,21 +40,39 @@ export function formatTimeRemaining(dueDate: string | Date | undefined, t?: TFun
   const parts: string[] = [];
 
   if (years > 0) {
-    const yearLabel = t ? (years === 1 ? t("time.year" as any) : t("time.years" as any)) : (years === 1 ? "Year" : "Years");
+    const yearLabel = t
+      ? years === 1
+        ? t("time.year" as any)
+        : t("time.years" as any)
+      : years === 1
+        ? "Year"
+        : "Years";
     parts.push(`${years} ${yearLabel}`);
   }
 
   if (months > 0) {
-    const monthLabel = t ? (months === 1 ? t("time.month" as any) : t("time.months" as any)) : (months === 1 ? "Month" : "Months");
+    const monthLabel = t
+      ? months === 1
+        ? t("time.month" as any)
+        : t("time.months" as any)
+      : months === 1
+        ? "Month"
+        : "Months";
     parts.push(`${months} ${monthLabel}`);
   }
 
   if (remainingDays > 0 && years === 0 && months < 3) {
-    const dayLabel = t ? (remainingDays === 1 ? t("time.day" as any) : t("time.days" as any)) : (remainingDays === 1 ? "Day" : "Days");
+    const dayLabel = t
+      ? remainingDays === 1
+        ? t("time.day" as any)
+        : t("time.days" as any)
+      : remainingDays === 1
+        ? "Day"
+        : "Days";
     parts.push(`${remainingDays} ${dayLabel}`);
   }
 
-  return parts.length > 0 ? parts.join(" ") : (t ? t("time.lessThanADay" as any) : "Less than a day");
+  return parts.length > 0 ? parts.join(" ") : t ? t("time.lessThanADay" as any) : "Less than a day";
 }
 
 /**

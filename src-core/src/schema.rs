@@ -131,6 +131,22 @@ diesel::table! {
         account_id -> Text,
         start_date -> Nullable<Text>,
         end_date -> Nullable<Text>,
+        init_amount -> Double,
+        allocation_amount -> Double,
+        allocation_percentage -> Double,
+        allocation_date -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    allocation_versions (id) {
+        id -> Text,
+        allocation_id -> Text,
+        allocation_percentage -> Double,
+        allocation_amount -> Double,
+        version_start_date -> Text,
+        version_end_date -> Nullable<Text>,
+        created_at -> Text,
     }
 }
 
@@ -236,7 +252,8 @@ diesel::table! {
 diesel::joinable!(accounts -> platforms (platform_id));
 diesel::joinable!(goals_allocation -> accounts (account_id));
 diesel::joinable!(goals_allocation -> goals (goal_id));
+diesel::joinable!(allocation_versions -> goals_allocation (allocation_id));
 diesel::joinable!(quotes -> assets (symbol));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    accounts,activities,activity_import_profiles,app_settings,assets,contribution_limits,daily_account_valuation,goals,goals_allocation,holdings_snapshots,market_data_providers,platforms,quotes,vn_assets,vn_assets_sync,vn_historical_records,);
+    accounts,activities,activity_import_profiles,app_settings,assets,contribution_limits,daily_account_valuation,goals,goals_allocation,allocation_versions,holdings_snapshots,market_data_providers,platforms,quotes,vn_assets,vn_assets_sync,vn_historical_records,);

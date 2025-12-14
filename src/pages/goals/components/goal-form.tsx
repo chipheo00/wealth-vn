@@ -3,6 +3,8 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import * as z from "zod";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,7 +21,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -40,6 +41,7 @@ interface GoalFormProps {
 
 export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFormProps) {
   const { t } = useTranslation("goals");
+  const navigate = useNavigate();
   const { addGoalMutation, updateGoalMutation } = useGoalMutations();
 
   const form = useForm<NewGoal>({
@@ -62,12 +64,7 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
     const subscription = form.watch((values) => {
       const { targetAmount, targetReturnRate, startDate, dueDate } = values;
 
-      if (
-        !targetAmount ||
-        targetReturnRate === undefined ||
-        !startDate ||
-        !dueDate
-      ) {
+      if (!targetAmount || targetReturnRate === undefined || !startDate || !dueDate) {
         return;
       }
 
@@ -76,8 +73,7 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
 
       // Calculate months between dates
       const monthsDiff =
-        (end.getFullYear() - start.getFullYear()) * 12 +
-        (end.getMonth() - start.getMonth());
+        (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
 
       if (monthsDiff <= 0) {
         return;
@@ -115,7 +111,20 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
     if (rest.id) {
       return updateGoalMutation.mutate(payload as any, { onSuccess });
     }
-    return addGoalMutation.mutate(payload, { onSuccess });
+    return addGoalMutation.mutate(payload, {
+      onSuccess: (createdGoal) => {
+        onSuccess();
+        // Show toast with action to add allocations
+        toast.success(t("form.postCreation.success"), {
+          description: t("form.postCreation.description"),
+          action: {
+            label: t("form.postCreation.addAllocations"),
+            onClick: () => navigate(`/goals/allocations?goalId=${createdGoal.id}`),
+          },
+          duration: 8000,
+        });
+      },
+    });
   }
 
   return (
@@ -142,10 +151,7 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
               <FormItem>
                 <FormLabel>{t("form.fields.title.label")}</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder={t("form.fields.title.placeholder")}
-                    {...field}
-                  />
+                  <Input placeholder={t("form.fields.title.placeholder")} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -162,7 +168,7 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
                 <FormControl>
                   <textarea
                     placeholder={t("form.fields.description.placeholder")}
-                    className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-24 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     {...field}
                   />
                 </FormControl>
@@ -179,10 +185,7 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
               <FormItem>
                 <FormLabel>{t("form.fields.targetAmount.label")}</FormLabel>
                 <FormControl>
-                  <MoneyInput
-                    placeholder={t("form.fields.targetAmount.placeholder")}
-                    {...field}
-                  />
+                  <MoneyInput placeholder={t("form.fields.targetAmount.placeholder")} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -199,7 +202,9 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
                   <TooltipProvider>
                     <Tooltip delayDuration={300}>
                       <TooltipTrigger asChild>
-                        <FormLabel className="cursor-help">{t("form.fields.startDate.label")}</FormLabel>
+                        <FormLabel className="cursor-help">
+                          {t("form.fields.startDate.label")}
+                        </FormLabel>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="start">
                         <div className="max-w-xs">{t("form.fields.startDate.description")}</div>
@@ -207,14 +212,14 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
                     </Tooltip>
                   </TooltipProvider>
                   <FormControl>
-                     <DatePickerInput
-                       value={field.value}
-                       onChange={field.onChange}
-                       className="w-full"
-                     />
-                   </FormControl>
-                   <FormMessage />
-                 </FormItem>
+                    <DatePickerInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      className="w-full"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
             />
 
@@ -226,7 +231,9 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
                   <TooltipProvider>
                     <Tooltip delayDuration={300}>
                       <TooltipTrigger asChild>
-                        <FormLabel className="cursor-help">{t("form.fields.dueDate.label")}</FormLabel>
+                        <FormLabel className="cursor-help">
+                          {t("form.fields.dueDate.label")}
+                        </FormLabel>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="start">
                         <div className="max-w-xs">{t("form.fields.dueDate.description")}</div>
@@ -234,14 +241,14 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
                     </Tooltip>
                   </TooltipProvider>
                   <FormControl>
-                     <DatePickerInput
-                       value={field.value}
-                       onChange={field.onChange}
-                       className="w-full"
-                     />
-                   </FormControl>
-                   <FormMessage />
-                 </FormItem>
+                    <DatePickerInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      className="w-full"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
             />
           </div>
@@ -257,46 +264,48 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
 
             <div className="bg-muted/50 border-border space-y-4 rounded-lg border p-4">
               {/* Target Return Rate */}
-               <FormField
-                 control={form.control}
-                 name="targetReturnRate"
-                 render={({ field }) => (
-                   <FormItem>
-                     <TooltipProvider>
-                       <Tooltip delayDuration={300}>
-                         <TooltipTrigger asChild>
-                           <FormLabel className="cursor-help">{t("form.fields.targetReturnRate.label")}</FormLabel>
-                         </TooltipTrigger>
-                         <TooltipContent side="top" align="start">
-                           <div className="max-w-xs">{t("form.fields.targetReturnRate.hint")}</div>
-                         </TooltipContent>
-                       </Tooltip>
-                     </TooltipProvider>
-                     <FormControl>
-                       <div className="relative">
-                         <Input
-                           type="number"
-                           step="0.1"
-                           min="0"
-                           max="100"
-                           placeholder={t("form.fields.targetReturnRate.placeholder")}
-                           value={field.value ?? ""}
-                           onChange={(e) => {
-                             const value = e.target.value;
-                             field.onChange(value === "" ? undefined : parseFloat(value));
-                           }}
-                           onBlur={field.onBlur}
-                           name={field.name}
-                           ref={field.ref}
-                           className="no-spinner pr-16"
-                         />
-                         <span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none">
-                           {t("form.fields.targetReturnRate.suffix")}
-                         </span>
-                       </div>
-                     </FormControl>
-                     <FormMessage />
-                   </FormItem>
+              <FormField
+                control={form.control}
+                name="targetReturnRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <TooltipProvider>
+                      <Tooltip delayDuration={300}>
+                        <TooltipTrigger asChild>
+                          <FormLabel className="cursor-help">
+                            {t("form.fields.targetReturnRate.label")}
+                          </FormLabel>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="start">
+                          <div className="max-w-xs">{t("form.fields.targetReturnRate.hint")}</div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          placeholder={t("form.fields.targetReturnRate.placeholder")}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === "" ? undefined : parseFloat(value));
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          className="no-spinner pr-16"
+                        />
+                        <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm">
+                          {t("form.fields.targetReturnRate.suffix")}
+                        </span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
               />
 
@@ -309,21 +318,25 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
                     <TooltipProvider>
                       <Tooltip delayDuration={300}>
                         <TooltipTrigger asChild>
-                          <FormLabel className="cursor-help">{t("form.fields.monthlyInvestment.label")}</FormLabel>
+                          <FormLabel className="cursor-help">
+                            {t("form.fields.monthlyInvestment.label")}
+                          </FormLabel>
                         </TooltipTrigger>
                         <TooltipContent side="top" align="start">
-                          <div className="max-w-xs">{t("form.fields.monthlyInvestment.description")}</div>
+                          <div className="max-w-xs">
+                            {t("form.fields.monthlyInvestment.description")}
+                          </div>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                     <FormControl>
-                       <MoneyInput
-                         placeholder={t("form.fields.monthlyInvestment.placeholder")}
-                         {...field}
-                       />
-                     </FormControl>
-                     <FormMessage />
-                   </FormItem>
+                      <MoneyInput
+                        placeholder={t("form.fields.monthlyInvestment.placeholder")}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
               />
             </div>
@@ -339,9 +352,7 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
-                  <FormLabel className="mt-0!">
-                    {t("form.fields.isAchieved.label")}
-                  </FormLabel>
+                  <FormLabel className="mt-0!">{t("form.fields.isAchieved.label")}</FormLabel>
                   <FormMessage />
                 </FormItem>
               )}
@@ -355,9 +366,7 @@ export function GoalForm({ defaultValues, onSuccess = () => undefined }: GoalFor
           </DialogTrigger>
           <Button type="submit">
             <Icons.Save className="mr-2 h-4 w-4" />
-            <span>
-              {defaultValues?.id ? t("form.buttons.update") : t("form.buttons.add")}
-            </span>
+            <span>{defaultValues?.id ? t("form.buttons.update") : t("form.buttons.add")}</span>
           </Button>
         </DialogFooter>
       </form>

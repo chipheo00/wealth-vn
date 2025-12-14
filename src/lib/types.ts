@@ -375,9 +375,24 @@ export interface GoalAllocation {
   id: string;
   goalId: string;
   accountId: string;
-  percentAllocation: number;
-  startDate?: string; // YYYY-MM-DD format
-  endDate?: string;   // YYYY-MM-DD format
+  percentAllocation: number; // DEPRECATED: use allocationPercentage
+  startDate?: string; // DEPRECATED: use allocationDate
+  endDate?: string;   // DEPRECATED
+  // New hybrid allocation fields
+  initAmount: number;
+  allocationAmount: number;
+  allocationPercentage: number;
+  allocationDate?: string; // YYYY-MM-DD format
+}
+
+export interface AllocationVersion {
+  id: string;
+  allocationId: string;
+  allocationPercentage: number;
+  allocationAmount: number;
+  versionStartDate: string;
+  versionEndDate?: string;
+  createdAt: string;
 }
 
 export interface GoalProgress {

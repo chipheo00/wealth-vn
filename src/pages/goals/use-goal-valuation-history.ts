@@ -4,26 +4,25 @@ import { QueryKeys } from "@/lib/query-keys";
 import type { AccountValuation, Goal, GoalAllocation } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import {
-    addMonths,
-    addWeeks,
-    addYears,
-    eachMonthOfInterval,
-    eachWeekOfInterval,
-    eachYearOfInterval,
-    endOfMonth,
-    endOfWeek,
-    endOfYear,
-    format,
-    isAfter,
-    isBefore,
-    isEqual,
-    parseISO,
-    startOfDay,
-    startOfYear,
-    subMonths,
-    subWeeks,
-    subYears,
-  } from "date-fns";
+  addMonths,
+  addWeeks,
+  addYears,
+  eachMonthOfInterval,
+  eachWeekOfInterval,
+  eachYearOfInterval,
+  endOfMonth,
+  endOfWeek,
+  endOfYear,
+  format,
+  isAfter,
+  isBefore,
+  isEqual,
+  parseISO,
+  startOfDay,
+  subMonths,
+  subWeeks,
+  subYears,
+} from "date-fns";
 import { useMemo } from "react";
 
 export type TimePeriodOption = "weeks" | "months" | "years" | "all";
@@ -49,12 +48,14 @@ function calculateDisplayDateRange(
   }
 
   // Default display counts (how many periods to show on each side of today)
-  const displayCounts: Record<Exclude<TimePeriodOption, "all">, { past: number; future: number }> =
-    {
-      weeks: { past: 12, future: 12 },
-      months: { past: 12, future: 12 },
-      years: { past: 3, future: 5 },
-    };
+  const displayCounts: Record<
+    Exclude<TimePeriodOption, "all">,
+    { past: number; future: number }
+  > = {
+    weeks: { past: 12, future: 12 },
+    months: { past: 12, future: 12 },
+    years: { past: 3, future: 5 },
+  };
 
   const counts = displayCounts[period];
   let displayStart: Date;
@@ -90,7 +91,7 @@ function calculateDisplayDateRange(
 
   // Ensure start is before end (in case constraints flipped them)
   if (isAfter(displayStart, displayEnd)) {
-      displayEnd = displayStart;
+    displayEnd = displayStart;
   }
 
   return { displayStart, displayEnd };
@@ -118,7 +119,7 @@ interface UseGoalValuationHistoryResult {
  * @param monthsFromStart - Number of months from start date
  */
 function calculateProjectedValue(
-  startValue: number,
+  _startValue: number,
   monthlyInvestment: number,
   annualReturnRate: number,
   monthsFromStart: number,
@@ -144,11 +145,11 @@ function getMonthsDiff(startDate: Date, endDate: Date): number {
   const yearDiff = endDate.getFullYear() - startDate.getFullYear();
   const monthDiff = endDate.getMonth() - startDate.getMonth();
   const wholMonths = yearDiff * 12 + monthDiff;
-  
+
   // Add fractional month based on days
   const daysDiff = endDate.getDate() - startDate.getDate();
   const fractionalMonth = daysDiff / 30; // Use 30 as average days per month
-  
+
   return wholMonths + fractionalMonth;
 }
 
@@ -160,29 +161,29 @@ function generateDateIntervals(startDate: Date, endDate: Date, period: TimePerio
   const today = startOfDay(new Date());
   // For 'all', we use the actual endDate, for others we might cap it or not depending on display logic
   // but simpler to just respect the passed start/end dates
-  const effectiveEndDate = period === "all" ? endDate : (isAfter(endDate, today) ? endDate : today);
+  const effectiveEndDate = period === "all" ? endDate : isAfter(endDate, today) ? endDate : today;
 
   switch (period) {
     case "weeks": {
       const weeks = eachWeekOfInterval({ start: startDate, end: effectiveEndDate });
-      return weeks.map(week => endOfWeek(week));
+      return weeks.map((week) => endOfWeek(week));
     }
     case "months": {
       const months = eachMonthOfInterval({ start: startDate, end: effectiveEndDate });
-      return months.map(month => endOfMonth(month));
+      return months.map((month) => endOfMonth(month));
     }
     case "years": {
       const years = eachYearOfInterval({ start: startDate, end: effectiveEndDate });
-      return years.map(year => endOfYear(year));
+      return years.map((year) => endOfYear(year));
     }
     case "all": {
       // "All time" view uses yearly intervals
       const years = eachYearOfInterval({ start: startDate, end: effectiveEndDate });
-      return years.map(year => endOfYear(year));
+      return years.map((year) => endOfYear(year));
     }
     default: {
       const months = eachMonthOfInterval({ start: startDate, end: effectiveEndDate });
-      return months.map(month => endOfMonth(month));
+      return months.map((month) => endOfMonth(month));
     }
   }
 }
@@ -378,7 +379,9 @@ export function useGoalValuationHistory(
     }
 
     // Remove duplicate dates
-    const uniqueDates = Array.from(new Set(dateIntervals.map(d => d.getTime()))).map(t => new Date(t));
+    const uniqueDates = Array.from(new Set(dateIntervals.map((d) => d.getTime()))).map(
+      (t) => new Date(t),
+    );
     dateIntervals = uniqueDates.sort((a, b) => a.getTime() - b.getTime());
 
     // Get allocation percentages for this goal
@@ -480,20 +483,19 @@ export function useGoalValuationHistory(
       // Get actual value (only for dates up to today and after goal start)
       const isInPast = isBefore(date, today) || isEqual(date, today);
       const isAfterGoalStart = !isBefore(date, goalStartDate);
-      let actual =
-        isInPast && isAfterGoalStart ? (aggregatedActuals.get(dateStr) ?? null) : null;
+      let actual = isInPast && isAfterGoalStart ? (aggregatedActuals.get(dateStr) ?? null) : null;
 
       // Special handling for current period to show latest known value
       if (actual === null && latestActualValue !== null) {
-          const isSamePeriod =
-            (period === "weeks" && format(date, "yyyy-ww") === format(today, "yyyy-ww")) ||
-            (period === "months" && format(date, "yyyy-MM") === format(today, "yyyy-MM")) ||
-            (period === "years" && format(date, "yyyy") === format(today, "yyyy")) ||
-            (period === "all" && format(date, "yyyy") === format(today, "yyyy"));
+        const isSamePeriod =
+          (period === "weeks" && format(date, "yyyy-ww") === format(today, "yyyy-ww")) ||
+          (period === "months" && format(date, "yyyy-MM") === format(today, "yyyy-MM")) ||
+          (period === "years" && format(date, "yyyy") === format(today, "yyyy")) ||
+          (period === "all" && format(date, "yyyy") === format(today, "yyyy"));
 
-          if (isSamePeriod) {
-            actual = latestActualValue;
-          }
+        if (isSamePeriod) {
+          actual = latestActualValue;
+        }
       }
 
       return {
