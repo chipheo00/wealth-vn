@@ -105,9 +105,10 @@ export function useGoalProgress(goals: Goal[] | undefined) {
 
   const goalProgressMap = useMemo(() => {
     const progressMap = new Map<string, GoalProgress>();
+    const allocationProgressMap = new Map<string, number>();
 
     if (!goals || !allocations || !latestValuations) {
-      return progressMap;
+      return { goalProgressMap: progressMap, allocationProgressMap };
     }
 
     // Create a map of account ID to valuation for quick lookup
@@ -166,6 +167,8 @@ export function useGoalProgress(goals: Goal[] | undefined) {
 
           const allocatedValue = initialContribution + allocatedGrowth;
 
+          allocationProgressMap.set(alloc.id, allocatedValue);
+
           currentValue += allocatedValue;
           totalInitialContribution += initialContribution;
         }
@@ -211,14 +214,15 @@ export function useGoalProgress(goals: Goal[] | undefined) {
       });
     });
 
-    return progressMap;
+    return { goalProgressMap: progressMap, allocationProgressMap };
   }, [goals, allocations, latestValuations, historyQueries, requiredHistory]);
 
   const isLoading = isLoadingValuations || isLoadingAllocations || isLoadingHistory;
 
   return {
-    goalProgressMap,
+    goalProgressMap: goalProgressMap.goalProgressMap,
     isLoading,
-    getGoalProgress: (goalId: string) => goalProgressMap.get(goalId),
+    getGoalProgress: (goalId: string) => goalProgressMap.goalProgressMap.get(goalId),
+    getAllocationValue: (allocationId: string) => goalProgressMap.allocationProgressMap.get(allocationId),
   };
 }

@@ -61,7 +61,7 @@ export default function GoalDetailsPage() {
   const [visibleModal, setVisibleModal] = useState(false);
   const [isCreatingAllocation, setIsCreatingAllocation] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodOption>("months");
-  const { getGoalProgress } = useGoalProgress(goals);
+  const { getGoalProgress, getAllocationValue } = useGoalProgress(goals);
   const { updateAllocationMutation, deleteAllocationMutation } = useGoalMutations();
 
   const goal = goals?.find((g) => g.id === id);
@@ -435,6 +435,7 @@ export default function GoalDetailsPage() {
               )
             }
             currentAccountValues={currentAccountValuesFromValuations}
+            getAllocationValue={getAllocationValue}
             onAllocationUpdated={async (allocation) => {
               await updateAllocationMutation.mutateAsync(allocation);
             }}

@@ -32,6 +32,7 @@ interface AllocationHistoryTableProps {
   onAllocationUpdated: (allocation: GoalAllocation) => Promise<void>;
   onAllocationDeleted?: (allocationId: string) => Promise<void>;
   readOnly?: boolean;
+  getAllocationValue?: (allocationId: string) => number | undefined;
 }
 
 export function AllocationHistoryTable({
@@ -42,6 +43,7 @@ export function AllocationHistoryTable({
   onAllocationUpdated,
   onAllocationDeleted,
   readOnly = false,
+  getAllocationValue,
 }: AllocationHistoryTableProps) {
   const [expandedAllocationId, setExpandedAllocationId] = useState<string | null>(null);
   const [allocationVersions, setAllocationVersions] = useState<Record<string, AllocationVersion[]>>({});
@@ -145,6 +147,9 @@ export function AllocationHistoryTable({
                 const initialContribution = alloc.initialContribution;
                 const allocatedPercent = alloc.allocatedPercent;
 
+                // Calculate contributed value using the provided function or fallback logic
+                const contributedValue = getAllocationValue?.(alloc.id) ?? (initialContribution + (currentValue - initialContribution) * (allocatedPercent / 100));
+
                 return (
                   <React.Fragment key={alloc.id}>
                     <tr className="border-b hover:bg-muted/50">
@@ -156,7 +161,7 @@ export function AllocationHistoryTable({
                         {allocatedPercent.toFixed(1)}%
                       </td>
                       <td className="text-right px-4 py-2 font-semibold">
-                        {currencySymbol}{formatCurrency(initialContribution + (currentValue - initialContribution) * (allocatedPercent / 100))}
+                        {currencySymbol}{formatCurrency(contributedValue)}
                       </td>
                       <td className="text-center px-4 py-2 text-xs text-muted-foreground">
                         {alloc.allocationDate ? formatActivityDate(alloc.allocationDate) : "-"}
