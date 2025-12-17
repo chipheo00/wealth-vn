@@ -2,105 +2,59 @@
 
 ## Overview
 
-Projected Value represents the target amount a goal should reach by a given date
-based on:
+Projected Value represents what a goal's allocated value should grow to by today's date based on:
 
-- Regular monthly contributions
+- Monthly contributions specified in the goal
 - Expected annual return rate
 - Time elapsed from goal start date
 
-**Key Principle:** Initial contributions are **excluded** from projection.
-Projected value is calculated purely from **monthly investment contributions**.
+**Current Implementation:** Projected value calculates growth from **monthly contributions only**. Initial contributions are tracked separately but NOT included in the projection calculation (see Critical Implementation Notes).
 
 ## Compounding Approaches
 
-The system supports two projection methods for different use cases:
+The system supports monthly compounding for projections:
 
-| Aspect | Monthly Compounding | Daily Compounding |
-|--------|-------------------|-------------------|
-| **When Used** | Chart projections, goal form calculations | Current-date on-track determination |
-| **Granularity** | Month-end dates only | Any specific date |
-| **Precision** | ~0.13% lower | ~0.13% higher |
-| **Function** | `calculateProjectedValue()` | `calculateProjectedValueByDate()` |
-| **Consistency** | Matches goal form setup | More realistic real-world |
+| Aspect | Details |
+|--------|---------|
+| **Method** | Monthly Compounding |
+| **When Used** | Goal progress calculations and chart projections |
+| **Granularity** | Month-end dates |
+| **Function** | `calculateProjectedValue()` in goal-utils.ts |
+| **Time Calculation** | `getMonthsDiff()` with fractional months |
 
 ## Core Formula (Monthly Compounding)
 
 ```
-FV = PV × (1 + r)^n + PMT × [((1 + r)^n - 1) / r]
+FV = PMT × [((1 + r)^n - 1) / r]
 ```
 
 Where:
 
 - **FV** = Future Value (Projected Value)
-- **PV** = Initial Principal (starting allocation)
-- **PMT** = Monthly Investment Amount
+- **PMT** = Monthly Investment Amount (monthly contribution)
 - **r** = Monthly Return Rate (annual rate / 12)
 - **n** = Number of months from goal start date
 
+**Note:** Initial principal (`PV × (1 + r)^n`) is NOT currently included in the calculation, despite being mentioned in the documented formula.
+
 ### Why Monthly Compounding?
 
-Monthly compounding is used for consistency with the goal form calculation. When
-a user creates a goal:
+Monthly compounding is used for consistency with the goal form calculation. When a user creates a goal, the form calculates required monthly investment using monthly compounding, and the projected value uses the same method.
 
-1. **Goal Form** calculates required monthly investment using monthly
-   compounding
-2. **Projected Value** uses the same monthly compounding formula
-3. **Result:** Projected Future Value at due date = Target Amount (consistent)
+### Initial Contributions Handling
 
-If different compounding methods were used, the projected value would not match
-the target, causing user confusion.
+**Current Implementation:** Initial contributions are tracked as `startValue` in goal progress but are **NOT compounded** into the projected value calculation.
 
-### Why Not Include Initial Contribution?
+- Initial contributions are aggregated from allocations: `sum(allocation.initialContribution)`
+- They are stored separately in `goalProgress.startValue`
+- They are NOT multiplied by the compound factor in projection calculations
+- The projected value only shows growth from monthly contributions
 
-Initial contributions represent what you've already allocated at goal start. The
-projection shows what you **expect to achieve through ongoing contributions and
-growth**, not what you already have.
+**Documented Formula vs Implementation:**
+- Formula shows: `FV = PV × (1 + r)^n + PMT × [((1 + r)^n - 1) / r]`
+- Actual calculation: `FV = PMT × [((1 + r)^n - 1) / r]` (first term omitted)
 
-**Example:**
-
-- Initial allocation: 34,000,000 (locked at goal start)
-- Monthly contribution: 1,000,000
-- Annual return: 7%
-- Months elapsed: 1
-
-Projected should show: ~1,005,833 (from contributions + growth) Not:
-34,000,000 + 1,005,833 (mixing allocated with projected)
-
-## Alternative Formula: Daily Compounding
-
-For more accurate real-world projections, daily compounding can be used.
-Unlike monthly compounding, daily compounding calculates projection for any
-specific date (not just month milestones).
-
-### Daily Compounding Formula
-
-```
-FV = PV × (1 + r_daily)^n + PMT_daily × [((1 + r_daily)^n - 1) / r_daily]
-```
-
-Where:
-
-- **FV** = Future Value at specific date
-- **PV** = Initial principal (starting allocation)
-- **PMT_daily** = Daily Investment Amount (derived from monthly: monthlyInvestment / 30)
-- **r_daily** = Daily Return Rate (annual rate / 100 / 365)
-- **n** = Number of days from goal start date to target date
-
-### When to Use Daily Compounding
-
-- **For current-date on-track determination**: More precise than monthly
-- **For any specific date projection**: Can calculate for Dec 15, not just Dec 31
-- **For daily charts or real-time tracking**: Better granularity
-
-### Precision Difference
-
-Daily vs Monthly compounding for 5 years at 8% annual rate:
-
-- Monthly compounding: `(1 + 0.08/12)^60 = 1.4898`
-- Daily compounding: `(1 + 0.08/365)^1825 = 1.4917`
-
-Difference: ~0.13% higher with daily compounding (more realistic)
+This is a known discrepancy that should be addressed in refactoring (see Critical Implementation Notes).
 
 ## Calculation Details (Current Implementation)
 
@@ -117,10 +71,10 @@ Example: 7% annual = 0.583% monthly (7 / 100 / 12 = 0.00583)
 ### 2. Time Calculation
 
 ```typescript
-const monthsFromStart = differenceInMonths(today, goalStartDate);
+const monthsFromStart = getMonthsDiff(goalStartDate, today);
 ```
 
-Uses date-fns `differenceInMonths` for accurate month difference.
+Uses date-fns-based `getMonthsDiff()` which includes fractional months based on day differences.
 
 ### 3. Compound Factor
 
@@ -151,18 +105,22 @@ Compound interest formula for regular contributions.
 
 ## Implementation Locations
 
-### 1. use-goal-progress.ts
+### 1. goal-utils.ts - calculateProjectedValue()
 
-**Purpose:** Calculate projected value for today's date, used for "On Track"
-determination on goal cards and goal details page.
+**Purpose:** Calculate projected value for a given number of months using monthly compounding.
+
+**Current Status:** Function has unused `startValue` parameter (marked with eslint-disable). Only uses monthly contribution and time.
 
 ```typescript
-function calculateProjectedValue(
+export function calculateProjectedValue(
+  // startValue is NOT USED - kept for backwards compatibility
+  startValue: number,
   monthlyInvestment: number,
   annualReturnRate: number,
   monthsFromStart: number,
 ): number {
-  if (monthsFromStart <= 0) return 0;
+  if (monthsFromStart < 0) return 0;
+  if (monthsFromStart === 0) return monthlyInvestment / 30; // ~first day
 
   const monthlyRate = annualReturnRate / 100 / 12;
 
@@ -177,223 +135,105 @@ function calculateProjectedValue(
 
 **Called from:**
 
-```typescript
-// Calculate months from goal start to today
-let monthsFromStart = 0;
-if (goal.startDate) {
-  const goalStartDate = parseISO(goal.startDate);
-  const today = new Date();
-  monthsFromStart = differenceInMonths(today, goalStartDate);
-}
+- **use-goal-progress.ts:** Calculate projected value at today's date
+  ```typescript
+  const monthsFromStart = getMonthsDiff(goalStartDate, today);
+  const projectedValue = calculateProjectedValue(
+    startValue,  // NOT USED
+    monthlyInvestment,
+    annualReturnRate,
+    Math.max(0, monthsFromStart),
+  );
+  isOnTrack = currentValue >= projectedValue;
+  ```
 
-const projectedValue = calculateProjectedValue(
-  monthlyInvestment,
-  annualReturnRate,
-  Math.max(0, monthsFromStart),
-);
-```
+- **use-goal-valuation-history.ts:** Calculate projected values for chart data points
+  ```typescript
+  const monthsFromStart = getMonthsDiff(goalStartDate, dateInterval);
+  const projected = calculateProjectedValue(
+    startValue,  // NOT USED
+    monthlyInvestment,
+    annualReturnRate,
+    Math.max(0, monthsFromStart),
+  );
+  ```
 
-### 2. use-goal-valuation-history.ts
+### 2. use-goal-progress.ts
 
-**Purpose:** Calculate projected values for all dates in the chart
-(weeks/months/years/all), used for chart rendering.
+**Purpose:** Main hook for calculating goal progress and on-track status.
 
-Uses the same formula, called for each date interval:
-
-```typescript
-const monthsFromStart = getMonthsDiff(goalStartDate, date);
-
-const projected = calculateProjectedValue(
-  monthlyInvestment,
-  annualReturnRate,
-  Math.max(0, monthsFromStart),
-);
-```
-
-### 3. goal-utils.ts - Daily Compounding Functions
-
-**Purpose:** Provide daily-precision projection calculations for on-track
-determination and any-date projections.
-
-#### `getDaysDiff(startDate, endDate)`
-
-Calculates exact number of days between two dates.
+**Key Logic:**
+- Sums all allocations' actual values: `initialContribution + (accountGrowth × percent)`
+- Gets `totalInitialContribution` as sum of all `allocation.initialContribution`
+- Calculates `projectedValue` using `calculateProjectedValue()` (which ignores initial contributions)
+- Determines on-track status: `currentValue >= projectedValue`
 
 ```typescript
-export function getDaysDiff(startDate: Date, endDate: Date): number {
-  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-}
+// Calculate progress for each goal
+goals.forEach((goal) => {
+  let currentValue = 0;
+  let totalInitialContribution = 0;
+
+  // Sum up allocations
+  goalAllocations.forEach((alloc) => {
+    const accountGrowth = currentValue - startAccountValue;
+    const allocatedGrowth = accountGrowth * percentage;
+    const allocatedValue = initialContribution + allocatedGrowth;
+    currentValue += allocatedValue;
+    totalInitialContribution += initialContribution;
+  });
+
+  // Calculate projected (excludes initial contributions)
+  const projectedValue = calculateProjectedValue(
+    totalInitialContribution,  // NOT USED in calculation
+    monthlyInvestment,
+    annualReturnRate,
+    Math.max(0, monthsFromStart),
+  );
+
+  // Store progress
+  progressMap.set(goal.id, {
+    currentValue,
+    projectedValue,
+    startValue: totalInitialContribution,
+    isOnTrack: currentValue >= projectedValue,
+  });
+});
 ```
 
-#### `calculateProjectedValueByDate(startValue, monthlyInvestment, annualReturnRate, startDate, currentDate)`
+### 3. use-goal-valuation-history.ts
 
-Calculates projected value at any specific date using daily compounding.
+**Purpose:** Generate chart data with actual values and projected values for each date interval.
+
+**Key Logic:**
+- Fetches historical valuations for allocated accounts
+- Calculates actual value per allocation: `initialContribution + (accountGrowth × percent)`
+- Aggregates by period (weeks/months/years)
+- Calculates projected values for each date interval
+- Returns chart data points with both actual and projected values
 
 ```typescript
-// Example: Project value for Dec 15 (not just Dec 31)
-const projected = calculateProjectedValueByDate(
-  startValue: 1000000,      // Initial allocation
-  monthlyInvestment: 100000, // Monthly contribution
-  annualReturnRate: 7,       // 7% annual
-  startDate: new Date('2025-01-01'),
-  currentDate: new Date('2025-12-15') // Any date
-);
+// For each date interval in chart
+dateIntervals.forEach((date) => {
+  const monthsFromStart = getMonthsDiff(goalStartDate, date);
+  
+  const projected = calculateProjectedValue(
+    startValue,  // NOT USED
+    monthlyInvestment,
+    annualReturnRate,
+    Math.max(0, monthsFromStart),
+  );
+
+  const actual = /* aggregated from historical valuations */;
+
+  chartData.push({
+    date: format(date, 'yyyy-MM-dd'),
+    dateLabel: formatDateLabel(date, period),
+    projected: projected,
+    actual: actual,
+  });
+});
 ```
-
-**Key Formula:**
-- Converts monthly investment to daily: `dailyInvestment = monthlyInvestment / 30`
-- Daily rate: `dailyRate = annualReturnRate / 100 / 365`
-- Applies compound interest for exact days elapsed
-
-#### `isGoalOnTrackByDate(currentValue, startValue, monthlyInvestment, annualReturnRate, startDate)`
-
-Determines on-track status using daily compounding (more precise than monthly).
-
-```typescript
-const onTrack = isGoalOnTrackByDate(
-  currentValue: 500000,
-  startValue: 1000000,
-  monthlyInvestment: 100000,
-  annualReturnRate: 7,
-  startDate: new Date('2025-01-01')
-);
-```
-
-### 4. goal-details-page.tsx
-
-**Purpose:** Display goal details with on-track status.
-
-**Single Source of Truth:** Uses `goalProgress.isOnTrack` from the hook to
-ensure consistency between Goal Card and Goal Details page.
-
-```typescript
-// Use goalProgress.isOnTrack as single source of truth (same as Goal Card)
-const onTrack = goalProgress?.isOnTrack ?? true;
-```
-
-### 5. use-goal-valuation-history.ts
-
-**Purpose:** Calculate projected values for all dates in the chart
-(weeks/months/years/all), used for chart rendering.
-
-Uses monthly compounding for consistency, called for each date interval:
-
-```typescript
-const projected = calculateProjectedValue(
-  startValue,
-  monthlyInvestment,
-  annualReturnRate,
-  Math.max(0, monthsFromStart),
-);
-```
-
-## Calculation Scenarios
-
-### Scenario 1: No Monthly Investment, No Return
-
-**Setup:**
-
-- Monthly investment: 0
-- Annual return rate: 0%
-- Months from start: 1
-
-**Calculation:**
-
-```
-monthlyInvestment = 0
-projectedValue = 0
-```
-
-**Result:** 0 (no growth without contributions or returns)
-
----
-
-### Scenario 2: Monthly Investment, No Return
-
-**Setup:**
-
-- Monthly investment: 1,000,000
-- Annual return rate: 0%
-- Months from start: 1
-
-**Calculation:**
-
-```
-projectedValue = 1,000,000 × 1 = 1,000,000
-```
-
-**Result:** 1,000,000 (purely from contributions)
-
----
-
-### Scenario 3: Monthly Investment + Return
-
-**Setup:**
-
-- Monthly investment: 1,000,000
-- Annual return rate: 7%
-- Months from start: 1
-
-**Calculation:**
-
-```
-monthlyRate = 7 / 100 / 12 = 0.00583
-compoundFactor = (1 + 0.00583)^1 = 1.00583
-projectedValue = 1,000,000 × ((1.00583 - 1) / 0.00583)
-              = 1,000,000 × 1.0
-              = 1,000,000
-```
-
-**Result:** 1,000,000 (first month, minimal compound effect)
-
----
-
-### Scenario 4: 1 Year Projection
-
-**Setup:**
-
-- Monthly investment: 1,000,000
-- Annual return rate: 7%
-- Months from start: 12
-
-**Calculation:**
-
-```
-monthlyRate = 0.00583
-compoundFactor = (1.00583)^12 = 1.0723
-projectedValue = 1,000,000 × ((1.0723 - 1) / 0.00583)
-              = 1,000,000 × 12.40
-              = 12,400,000
-```
-
-**Result:** 12,400,000 (approximately: 12M from contributions + 400K from
-growth)
-
----
-
-### Scenario 5: Multiple Years
-
-**Setup:**
-
-- Initial allocation: 34,000,000 (NOT included in projection)
-- Monthly investment: 1,000,000
-- Annual return rate: 7%
-- Months from start: 24 (2 years)
-
-**Calculation:**
-
-```
-monthlyRate = 0.00583
-compoundFactor = (1.00583)^24 = 1.1498
-projectedValue = 1,000,000 × ((1.1498 - 1) / 0.00583)
-              = 1,000,000 × 25.69
-              = 25,690,000
-```
-
-**Result:** 25,690,000 (only from monthly contributions, not initial allocation)
-
-**Note:** The 34M initial allocation affects actual value, not projected value.
 
 ## On-Track Determination
 
@@ -405,12 +245,14 @@ isOnTrack = currentValue >= projectedValue;
 
 **Where:**
 
-- **currentValue** = initialContribution + (accountGrowth × allocatedPercent)
-- **projectedValue** = PMT × [((1 + r)^n - 1) / r] (using monthly compounding)
+- **currentValue** = sum of all allocations' actual values
+  - Per allocation: `initialContribution + (accountGrowth × allocatedPercent)`
+  - `accountGrowth` = current account value - account value at allocation start date
+- **projectedValue** = calculated using `calculateProjectedValue()` 
+  - Monthly compounding from goal start date to today
+  - Only includes monthly contribution growth (initial principal NOT included)
 
-**Single Source of Truth:** The `goalProgress.isOnTrack` from
-`use-goal-progress.ts` hook is used by both Goal Card and Goal Details page to
-ensure consistency.
+**Single Source of Truth:** The `goalProgress.isOnTrack` from `use-goal-progress.ts` hook is used by both Goal Card and Goal Details page to ensure consistency.
 
 ### Example: On Track
 
@@ -419,22 +261,20 @@ ensure consistency.
 - Initial allocation: 34,000,000
 - Monthly investment: 1,000,000
 - Annual return: 7%
-- Actual account growth: 500,000
+- Actual account value: 34,500,000
+- Account value at start: 34,000,000
 
-**Actual value:**
-
-```
-currentValue = 34,000,000 + (500,000 × 100%)
-             = 34,500,000
-```
-
-**Projected value:**
+**Calculation:**
 
 ```
+currentValue = 34,000,000 + (500,000 × 100%) = 34,500,000
+
+monthsFromStart = 1
 monthlyRate = 7 / 100 / 12 = 0.00583
 compoundFactor = (1.00583)^1 = 1.00583
 projectedValue = 1,000,000 × ((1.00583 - 1) / 0.00583)
-              = 1,000,000
+               = 1,000,000 × 1.00
+               = ~1,000,000
 ```
 
 **Determination:**
@@ -443,139 +283,41 @@ projectedValue = 1,000,000 × ((1.00583 - 1) / 0.00583)
 34,500,000 >= 1,000,000 → ON TRACK ✓
 ```
 
-### Example: Off Track
+(Note: Initial allocation of 34M keeps goal on track even though projected contributions are only 1M)
 
-**Same setup but:**
+### Example: Off Track (Future Goal with No Allocation)
 
-- Actual account growth: -500,000 (loss)
-
-**Actual value:**
-
-```
-currentValue = 34,000,000 + (-500,000 × 100%)
-             = 33,500,000
-```
-
-**Determination:**
-
-```
-33,500,000 >= 1,000,000 → ON TRACK ✓ (still on track!)
-```
-
----
-
-**Example with smaller initial allocation:**
-
-**Setup:**
-
-- Initial allocation: 1,000,000
-- Monthly investment: 10,000
-- Annual return: 7%
-- Months from start: 1
-- Actual account growth: 0 (no growth)
-
-**Actual value:**
-
-```
-currentValue = 1,000,000 + (0 × 100%)
-             = 1,000,000
-```
-
-**Projected value:**
-
-```
-projectedValue = 10,000 × 1 = 10,000
-```
-
-**Determination:**
-
-```
-1,000,000 >= 10,000 → ON TRACK ✓
-```
-
----
-
-**Example: Truly Off Track**
-
-**Setup:**
-
-- Initial allocation: 100,000 (that was supposed to grow)
-- Monthly investment: 1,000
-- Annual return: 10%
-- Months from start: 12
-- Actual account growth: -50,000 (loss)
-
-**Actual value:**
-
-```
-currentValue = 100,000 + (-50,000 × 100%)
-             = 50,000
-```
-
-**Projected value:**
-
-```
-monthlyRate = 10 / 100 / 12 = 0.00833
-compoundFactor = (1.00833)^12 = 1.1047
-projectedValue = 1,000 × ((1.1047 - 1) / 0.00833)
-              = 1,000 × 12.56
-              = 12,560
-```
-
-**Determination:**
-
-```
-50,000 >= 12,560 → ON TRACK ✓
-```
-
-(Even with loss, initial allocation keeps it on track)
-
----
-
-**Example: Truly Off Track (Version 2)**
-
-**Setup:**
-
-- Initial allocation: 0 (future-start goal, no allocation yet)
+- Goal start: Mar 15, 2025 (future)
+- Today: Feb 14, 2025 (before start)
+- Initial allocation: 0
 - Monthly investment: 1,000,000
-- Annual return: 7%
-- Months from start: 1
-- Actual account growth: 0
 
-**Actual value:**
+**Calculation:**
 
 ```
-currentValue = 0 + (0 × 100%)
-             = 0
-```
-
-**Projected value:**
-
-```
-projectedValue = 1,000,000
+monthsFromStart = negative (before goal start)
+projectedValue = 0
+currentValue = 0
 ```
 
 **Determination:**
 
 ```
-0 >= 1,000,000 → OFF TRACK ✗
+0 >= 0 → ON TRACK ✓
 ```
 
-(Future goal with no allocation yet is off track)
+(Future goal with zero values appears on track, but `getGoalStatus()` checks `isGoalScheduled()` first)
 
 ## Chart Rendering
-
-The projected line on the chart is built by calculating projected value for each
-date interval.
 
 ### Date Intervals
 
 Based on time period selected:
 
-- **Weeks:** Every end-of-week from goal start to due date
-- **Months:** Every end-of-month from goal start to due date
-- **Years:** Every end-of-year from goal start to due date
-- **All:** Yearly intervals across entire goal timeline
+- **Weeks:** End of each week from goal start to due date
+- **Months:** End of each month from goal start to due date
+- **Years:** End of each year from goal start to due date
+- **All:** Yearly intervals from goal start to due date
 
 ### Chart Data Points
 
@@ -585,7 +327,7 @@ For each date interval:
 {
   date: "2025-02-01",
   dateLabel: "Feb '25",
-  projected: 1020321,  // Calculated for end of period
+  projected: 1020321,  // Calculated using calculateProjectedValue()
   actual: 34500000     // Historical account value (if available)
 }
 ```
@@ -594,7 +336,7 @@ For each date interval:
 
 For the **current period** (which hasn't ended yet):
 
-**Current Logic (as of implementation):**
+**Current Logic:**
 - If actual data available on or before the period end date: Use it
 - If NOT available AND it's the current period: Use latest known value
 - If future period: Show null (no actual data)
@@ -606,7 +348,6 @@ For the **current period** (which hasn't ended yet):
 
 **Code:**
 ```typescript
-// Lines 470-480 in use-goal-valuation-history.ts
 if (actual === null && latestActualValue !== null) {
   const isSamePeriod =
     (period === "weeks" && format(date, "yyyy-ww") === format(today, "yyyy-ww")) ||
@@ -615,15 +356,10 @@ if (actual === null && latestActualValue !== null) {
     (period === "all" && format(date, "yyyy") === format(today, "yyyy"));
 
   if (isSamePeriod) {
-    actual = latestActualValue;  // Use today's value for current period
+    actual = latestActualValue;
   }
 }
 ```
-
-### Projected vs Actual Lines
-
-- **Projected (dashed line):** Uses monthly compounding, calculated at period end dates
-- **Actual (solid line):** Historical values from account valuations, latest value used for current incomplete period
 
 ## Special Cases
 
@@ -659,42 +395,80 @@ Projected value = 0 (goal hasn't started)
 projectedValue = 0
 ```
 
-Projected value = 0 (only from contributions)
+Projected value = 0 (no contributions to project)
 
 ---
 
 ### Case 3: Negative Return Rate
 
-**Not supported by business logic.** Return rates are typically 0-20%. Negative
-returns should be handled as 0 or require separate loss calculation.
+**Not supported by business logic.** Return rates are typically 0-20%. Negative returns should be handled as 0 or require separate loss calculation.
+
+## Critical Implementation Notes
+
+### 1. calculateProjectedValue() - Unused startValue Parameter
+
+The `calculateProjectedValue()` function has a `startValue` parameter that is **NOT USED** in the current implementation. The function is marked with `@eslint-disable-next-line @typescript-eslint/no-unused-vars` and only uses:
+
+- `monthlyInvestment`
+- `annualReturnRate`
+- `monthsFromStart`
+
+**Impact:** Initial principal (initial contributions) is NOT included in the projected value calculation.
+
+**Current Workaround:**
+- Initial contributions are tracked separately in `goalProgress.startValue`
+- They are displayed for informational purposes
+- But they are not compounded into the projection
+
+**Recommendation for Refactoring:**
+The function should be updated to either:
+1. Actually use `startValue` and compound it: `PV × (1 + r)^n + PMT × [...]`
+2. OR remove the parameter and clarify that projections exclude initial principal
+
+This discrepancy can lead to confusion about what "projected value" represents.
+
+### 2. Date Difference Calculation
+
+- `getMonthsDiff()` in date-utils.ts returns fractional months (includes day difference)
+- Projection calculations use exact month counts from this function
+- For very short periods (< 1 month), `monthsFromStart` can be fractional
+
+### 3. Goal Form vs Projected Value Consistency
+
+The goal form uses `calculateMonthlyInvestment()` which back-calculates the required monthly contribution to reach a target amount. This uses the same monthly compounding formula. However, since projected value doesn't include initial principal in the calculation, there may be mismatches if the goal form assumes initial principal will be compounded.
 
 ## Data Dependencies
 
 ### use-goal-progress.ts
 
-Requires:
+**Requires:**
 
 - `goal.monthlyInvestment` — Monthly contribution amount
 - `goal.targetReturnRate` — Annual return percentage (0-100)
 - `goal.startDate` — Goal start date (ISO string)
+- Allocations with `initialContribution` values
 
-Provides:
+**Provides:**
 
-- `goalProgress.projectedValue` — Projected value at today's date
+- `goalProgress.projectedValue` — Projected value at today's date (monthly compounding, excludes initial contributions)
 - `goalProgress.isOnTrack` — Boolean: currentValue >= projectedValue
+- `goalProgress.startValue` — Sum of initial contributions (for reference)
 
 ### use-goal-valuation-history.ts
 
-Requires:
+**Requires:**
 
 - `goal.monthlyInvestment` — Monthly contribution amount
 - `goal.targetReturnRate` — Annual return percentage (0-100)
 - `goal.startDate` — Goal start date (ISO string)
 - `goal.dueDate` — Goal due date (ISO string)
+- Allocations with `initialContribution` values
+- Historical valuations for allocated accounts
 
-Provides:
+**Provides:**
 
-- `chartData[].projected` — Projected value for each date interval
+- `chartData[].projected` — Projected value for each date interval (monthly compounding, excludes initial contributions)
+- `chartData[].actual` — Historical actual value (aggregated from account valuations)
 - Used in chart rendering and visual comparison with actual values
 
 ## Validation Rules
@@ -713,7 +487,7 @@ Can be 0 (no contributions expected).
 0 <= annualReturnRate <= 100
 ```
 
-Typically 0-20% for realistic scenarios.
+Typically 0-20% for realistic scenarios. Negative returns not supported.
 
 ### 3. Start Date Before Due Date
 
@@ -729,45 +503,40 @@ Ensure goal timeline makes sense.
 projectedValue >= 0
 ```
 
-Always non-negative (can't have negative projected value without losses).
+Always non-negative (only calculates from positive contributions and rates).
 
 ## Testing Scenarios
 
 1. ✓ Goal with zero monthly investment → projected = 0
 2. ✓ Goal with zero return rate → projected = sum of contributions
-3. ✓ Goal with 0% monthly + 7% return → projected = 0
-4. ✓ Goal with contributions + return → compound interest applied
-5. ✓ Goal not started yet → projected = 0
-6. ✓ Goal active for 1 year → verify against manual calculation
-7. ✓ On-track determination → currentValue >= projectedValue
-8. ✓ Chart data points → verify intervals match selected period
+3. ✓ Goal with contributions + return → compound interest applied
+4. ✓ Goal not started yet → projected = 0
+5. ✓ Goal active for 1 year → verify against manual calculation
+6. ✓ On-track determination → currentValue >= projectedValue
+7. ✓ Chart data points → verify intervals match selected period
+8. ⚠️ Initial contributions effect → Currently NOT compounded into projected value
 
 ## References
 
 - `src/lib/date-utils.ts` — Date calculation utilities
-  - `getMonthsDiff()` — Calculate months between dates
+  - `getMonthsDiff()` — Calculate months between dates (with fractional component)
   - `formatTimeRemaining()` — Format time to due date
   - `formatTimeElapsed()` — Format time since start date
 
-- `src/pages/goals/lib/goal-utils.ts` — Goal calculation and status utilities
-  - `calculateProjectedValue()` — Monthly compounding projection
-  - `calculateProjectedValueByDate()` — Daily compounding projection for any date
+- `src/pages/goals/lib/goal-utils.ts` — Goal calculation utilities
+  - `calculateProjectedValue()` — Monthly compounding projection (excludes initial principal)
+  - `calculateProjectedValueByDate()` — Daily compounding (not used in current flow)
+  - `calculateDailyInvestment()` — Back-calculate daily investment for target (not used in current flow)
   - `getDaysDiff()` — Calculate days between dates
-  - `isGoalOnTrack()` — Compare current vs monthly-projected value
-  - `isGoalOnTrackByDate()` — Compare current vs daily-projected value
+  - `isGoalOnTrack()` — Compare current vs projected value
+  - `isGoalOnTrackByDate()` — Daily precision on-track check (not used in current flow)
   - `isGoalScheduled()` — Check if goal is future-scheduled
   - `getGoalStatus()` — Get UI status display
 
-- `src/pages/goals/use-goal-progress.ts` — Main hook for goal progress and
-  on-track determination
+- `src/pages/goals/use-goal-progress.ts` — Main hook for goal progress calculation and on-track determination
 
-- `src/pages/goals/use-goal-valuation-history.ts` — Chart data generation with
-  monthly compounding projections
+- `src/pages/goals/use-goal-valuation-history.ts` — Chart data generation with projected and actual values
 
-- `src/pages/goals/goal-details-page.tsx` — Goal details page (uses
-  goalProgress.isOnTrack as single source)
+- `src/pages/goals/goal-details-page.tsx` — Goal details page (uses `goalProgress.isOnTrack`)
 
-- `src/pages/goals/components/goal-form.tsx` — Goal form (calculates monthly
-  investment using same formula)
-
-- `docs/goal-actual-growth-business-logic.md` — Actual value calculation logic
+- `src/pages/goals/components/goal-form.tsx` — Goal form (may use different calculation for monthly investment)

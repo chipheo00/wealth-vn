@@ -18,6 +18,7 @@ interface GoalProgress {
   expectedProgress: number; // percentage (based on timeline)
   isOnTrack: boolean;
   projectedValue: number; // projected value at today's date
+  startValue: number; // initial principal (sum of initial contributions)
 }
 
 /**
@@ -184,6 +185,7 @@ export function useGoalProgress(goals: Goal[] | undefined) {
         expectedProgress: 0,
         isOnTrack: isGoalOnTrack(currentValue, projectedValue),
         projectedValue,
+        startValue,
       });
     });
 

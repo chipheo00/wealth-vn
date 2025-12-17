@@ -10,6 +10,7 @@ import { AnimatedToggleGroup, Button, formatAmount, Icons, Page, Skeleton } from
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
+import { parseISO } from "date-fns";
 import {
   Area,
   AreaChart,
@@ -24,7 +25,11 @@ import { AllocationHistoryTable } from "./components/allocation-history-table";
 import { EditAllocationsModal } from "./components/edit-allocations-modal";
 import GoalsAllocations from "./components/goal-allocations";
 import { GoalEditModal } from "./components/goal-edit-modal";
-import { isGoalOnTrack } from "./lib/goal-utils";
+import {
+  calculateDailyInvestment,
+  calculateProjectedValueByDate,
+  isGoalOnTrackByDate,
+} from "./lib/goal-utils";
 import { useGoalMutations } from "./use-goal-mutations";
 import { useGoalProgress } from "./use-goal-progress";
 import { TimePeriodOption, useGoalValuationHistory } from "./use-goal-valuation-history";
@@ -100,26 +105,56 @@ export default function GoalDetailsPage() {
   const currentAmount = goalProgress?.currentValue ?? 0;
   const progress = goalProgress?.progress ?? 0;
 
-  // Get projected future value (last value in chart data)
-  const projectedFutureValue =
-    chartData.length > 0 ? (chartData[chartData.length - 1]?.projected ?? 0) : 0;
+  // Calculate projections using daily compounding for accuracy
+  let projectedFutureValue = 0;
+  let projectedValueToday = 0;
+  let onTrack = true;
 
-  // Get projected value at today's date for on-track determination
-  // Find the closest data point to today (since we use end-of-period dates)
-  const today = new Date();
-  let projectedValueToday = currentAmount;
+  if (goal && goal.startDate && goal.dueDate && goalProgress) {
+    const startDate = parseISO(goal.startDate);
+    const dueDate = parseISO(goal.dueDate);
+    const startValue = goalProgress.startValue ?? 0; // Initial principal (sum of initial contributions)
+    const monthlyInvestment = goal.monthlyInvestment ?? 0;
+    const annualReturnRate = goal.targetReturnRate ?? 0;
 
-  if (chartData.length > 0) {
-    // Find the first data point that is today or in the future
-    const nextDataPoint = chartData.find((d) => {
-      const dataDate = new Date(d.date);
-      return dataDate >= today;
-    });
-    projectedValueToday = nextDataPoint?.projected ?? projectedFutureValue;
+    // Back-calculate daily investment to match target at due date
+    const dailyInvestment = calculateDailyInvestment(
+      startValue,
+      goal.targetAmount,
+      annualReturnRate,
+      startDate,
+      dueDate,
+    );
+
+    // Get projected value at due date (should match target)
+    projectedFutureValue = calculateProjectedValueByDate(
+      startValue,
+      dailyInvestment,
+      annualReturnRate,
+      startDate,
+      dueDate,
+    );
+
+    // Get projected value at today's date
+    const today = new Date();
+    projectedValueToday = calculateProjectedValueByDate(
+      startValue,
+      dailyInvestment,
+      annualReturnRate,
+      startDate,
+      today,
+    );
+
+    // Determine if on track using daily precision
+    onTrack = isGoalOnTrackByDate(
+      currentAmount,
+      startValue,
+      dailyInvestment,
+      annualReturnRate,
+      startDate,
+    );
   }
 
-  // Determine if goal is on track: currentAmount >= projectedValueToday
-  const onTrack = isGoalOnTrack(currentAmount, projectedValueToday);
   const actualColor = onTrack ? "var(--chart-actual-on-track)" : "var(--chart-actual-off-track)";
 
 
