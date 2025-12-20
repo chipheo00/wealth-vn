@@ -39,6 +39,7 @@ export interface GoalChartDataPoint {
 
 export interface UseGoalValuationHistoryResult {
   chartData: GoalChartDataPoint[];
+  allocationValues: Map<string, number>; // Per-allocation contributed values (accountId -> value)
   isLoading: boolean;
   error: Error | null;
 }
@@ -255,12 +256,17 @@ function calculateActualValuesByDate(
   historicalValuations: Map<string, AccountValuation[]> | undefined,
   allocationDetailsMap: Map<string, AllocationDetails>,
   goalStartDate: string
-): { actualValuesByDate: Map<string, number>; latestActualValue: number | null } {
+): {
+  actualValuesByDate: Map<string, number>;
+  latestActualValue: number | null;
+  latestAllocationValues: Map<string, number>; // Per-allocation values (accountId -> value)
+} {
   const actualValuesByDate = new Map<string, number>();
   let latestActualValue: number | null = null;
+  const latestAllocationValues = new Map<string, number>();
 
   if (!historicalValuations) {
-    return { actualValuesByDate, latestActualValue };
+    return { actualValuesByDate, latestActualValue, latestAllocationValues };
   }
 
   const allDates = new Set<string>();
@@ -275,7 +281,7 @@ function calculateActualValuesByDate(
 
       allocationDetailsMap.forEach((allocationDetails, accountId) => {
         const { initialContribution, percentage, startDate } = allocationDetails;
-        totalValue += initialContribution;
+        let allocationValue = initialContribution;
 
         const valuations = historicalValuations.get(accountId);
         const valuation = valuations?.find((v) => v.valuationDate === dateStr);
@@ -299,8 +305,12 @@ function calculateActualValuesByDate(
 
           const accountGrowth = valuation.totalValue - startAccountValue;
           const allocatedGrowth = accountGrowth * percentage;
-          totalValue += allocatedGrowth;
+          allocationValue += allocatedGrowth;
         }
+
+        totalValue += allocationValue;
+        // Track the latest value for this allocation (will be overwritten as we iterate through dates)
+        latestAllocationValues.set(accountId, allocationValue);
       });
 
       if (totalValue > 0) {
@@ -309,7 +319,7 @@ function calculateActualValuesByDate(
       }
     });
 
-  return { actualValuesByDate, latestActualValue };
+  return { actualValuesByDate, latestActualValue, latestAllocationValues };
 }
 
 /**
@@ -533,8 +543,8 @@ export function useGoalValuationHistory(
     enabled: allocatedAccountIds.length > 0 && !!dateRange,
   });
 
-  const chartData = useMemo((): GoalChartDataPoint[] => {
-    if (!goal || !dateRange) return [];
+  const chartDataResult = useMemo((): { chartData: GoalChartDataPoint[]; allocationValues: Map<string, number> } => {
+    if (!goal || !dateRange) return { chartData: [], allocationValues: new Map() };
 
     const goalStartDate = parseISO(dateRange.goalStartDate);
     const endDate = parseISO(dateRange.endDate);
@@ -612,7 +622,7 @@ export function useGoalValuationHistory(
     const allocationDetailsMap = buildAllocationDetailsMap(allocations, goal.id, dateRange.goalStartDate);
 
     // Calculate actual values
-    const { actualValuesByDate, latestActualValue } = calculateActualValuesByDate(
+    const { actualValuesByDate, latestActualValue, latestAllocationValues } = calculateActualValuesByDate(
       historicalValuations,
       allocationDetailsMap,
       dateRange.goalStartDate
@@ -694,11 +704,15 @@ export function useGoalValuationHistory(
       point.projected !== null || point.actual !== null
     );
 
-    return filteredResult;
+    return {
+      chartData: filteredResult,
+      allocationValues: latestAllocationValues,
+    };
   }, [goal, dateRange, period, allocations, historicalValuations, startValue, projectedFutureValue]);
 
   return {
-    chartData,
+    chartData: chartDataResult.chartData,
+    allocationValues: chartDataResult.allocationValues,
     isLoading: isLoadingAllocations || isLoadingValuations,
     error: allocationsError || valuationsError,
   };

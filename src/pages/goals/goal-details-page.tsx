@@ -67,7 +67,7 @@ export default function GoalDetailsPage() {
   const [isCreatingAllocation, setIsCreatingAllocation] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodOption>("months");
   const { getGoalProgress, getAllocationValue } = useGoalProgress(goals);
-  const { updateAllocationMutation, deleteAllocationMutation } = useGoalMutations();
+  const { updateAllocationMutation, deleteAllocationMutation, saveAllocationsMutation } = useGoalMutations();
 
   const goal = goals?.find((g) => g.id === id);
   const goalProgress = id ? getGoalProgress(id) : undefined;
@@ -113,7 +113,7 @@ export default function GoalDetailsPage() {
   }, [goal, chartStartValue]);
 
   // Use the new hook for chart data - pass startValue and projectedFutureValue for consistency
-  const { chartData, isLoading: isChartLoading } = useGoalValuationHistory(goal, timePeriod, {
+  const { chartData, allocationValues, isLoading: isChartLoading } = useGoalValuationHistory(goal, timePeriod, {
     startValue: chartStartValue,
     projectedFutureValue: chartProjectedFutureValue,
   });
@@ -520,20 +520,19 @@ export default function GoalDetailsPage() {
             }
             currentAccountValues={currentAccountValuesFromValuations}
             getAllocationValue={(allocationId) => {
-              // Use chart-consistent values for "Contributed Value"
-              // This ensures the table matches the chart's actual value line
+              // Use chart-consistent per-allocation values
+              // Each allocation's value is calculated independently based on its own account's growth
               const allocation = allocations?.find(a => a.id === allocationId);
               if (!allocation) return getAllocationValue(allocationId);
 
-              // Get total allocation percentage for this goal to distribute proportionally
-              const goalAllocations = allocations?.filter(a => a.goalId === id) || [];
-              const totalPercent = goalAllocations.reduce((sum, a) => sum + (a.allocatedPercent || 0), 0);
+              // Get the chart-calculated value for this allocation's account
+              const chartValue = allocationValues.get(allocation.accountId);
+              if (chartValue !== undefined) {
+                return chartValue;
+              }
 
-              if (totalPercent === 0) return getAllocationValue(allocationId);
-
-              // Distribute the chart's currentAmount proportionally based on allocation percentage
-              const allocationShare = (allocation.allocatedPercent || 0) / totalPercent;
-              return currentAmount * allocationShare;
+              // Fallback to original calculation if chart value not available
+              return getAllocationValue(allocationId);
             }}
             onAllocationUpdated={async (allocation) => {
               await updateAllocationMutation.mutateAsync(allocation);
@@ -559,9 +558,8 @@ export default function GoalDetailsPage() {
           existingAllocations={allocations?.filter((a) => a.goalId === id) || []}
           allAllocations={allocations || []}
           onSubmit={async (newAllocations) => {
-            for (const allocation of newAllocations) {
-              await updateAllocationMutation.mutateAsync(allocation);
-            }
+            // Save all allocations at once with a single success toast
+            await saveAllocationsMutation.mutateAsync(newAllocations);
           }}
         />
       )}

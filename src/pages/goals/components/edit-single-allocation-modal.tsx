@@ -158,12 +158,7 @@ export function EditSingleAllocationModal({
       onOpenChange(false);
       setAmount(0);
       setPercentage(0);
-      toast[currentAllocation ? "success" : "success"](
-        currentAllocation ? "Allocation Updated" : "Allocation Created",
-        {
-          description: `${goal.title} on ${account.name}`,
-        }
-      );
+      // Toast is handled by the mutation hook, no need to show it here
     } catch (err) {
       toast.error("Failed to save allocation", {
         description: err instanceof Error ? err.message : "Unknown error",

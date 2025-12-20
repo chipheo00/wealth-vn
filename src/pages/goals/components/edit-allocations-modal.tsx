@@ -1,11 +1,11 @@
 import { getHistoricalValuations } from "@/commands/portfolio";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { QueryKeys } from "@/lib/query-keys";
@@ -115,45 +115,30 @@ export function EditAllocationsModal({
     fetchHistoricalValues();
   }, [open, goal.startDate, accounts]);
 
-  // Calculate available balances and baseline values for percentage calculation
-  const getBaselineValue = (account: Account): number => {
-    if (!goal.startDate) {
-      return currentAccountValues.get(account.id) || 0;
-    }
-
-    const startDate = new Date(goal.startDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (startDate > today) {
-      // Future start date - use current value
-      return currentAccountValues.get(account.id) || 0;
-    } else {
-      // Past start date - use historical value
-      return historicalAccountValues[account.id] ?? 0;
-    }
-  };
-
   // Calculate available balances
-  // Available = (Historical Value at Start Date) - (Unallocated from other goals)
+  // Available = Current Value × (Unallocated Percentage / 100)
+  // This ensures that if 100% is allocated, the available balance is 0
   const calculateAvailableBalances = () => {
     const balances: Record<string, number> = {};
 
     for (const account of accounts) {
-      const baselineValue = getBaselineValue(account);
+      const currentValue = currentAccountValues.get(account.id) || 0;
 
-      // Sum allocations for this account from OTHER goals
-      const allocatedToOtherGoals = allAllocations.reduce((sum, alloc) => {
-        // Exclude allocations for this goal (already handled by 'existingAllocations' logic elsewhere for prefill)
-        // Check if allocation belongs to OTHER goal
+      // Sum percentage allocations for this account from OTHER goals only
+      const allocatedPercentToOtherGoals = allAllocations.reduce((sum, alloc) => {
+        // Exclude allocations for this goal
         if (alloc.goalId === goal.id) return sum;
         // Check if allocation is for THIS account
         if (alloc.accountId !== account.id) return sum;
 
-        return sum + (alloc.initialContribution ?? 0);
+        return sum + (alloc.allocatedPercent ?? 0);
       }, 0);
 
-      balances[account.id] = Math.max(0, baselineValue - allocatedToOtherGoals);
+      // Unallocated percentage available for this goal to use
+      const unallocatedPercent = Math.max(0, 100 - allocatedPercentToOtherGoals);
+
+      // Available balance = current value × unallocated percentage
+      balances[account.id] = currentValue * (unallocatedPercent / 100);
     }
 
     setAvailableBalances(balances);
@@ -322,7 +307,7 @@ export function EditAllocationsModal({
 
       // Wait a moment for backend to process, then refetch queries
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Refetch to ensure fresh data is immediately available
       await Promise.all([
         queryClient.refetchQueries({ queryKey: [QueryKeys.GOALS_ALLOCATIONS] }),
