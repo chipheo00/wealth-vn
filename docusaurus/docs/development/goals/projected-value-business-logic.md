@@ -76,14 +76,17 @@ specific date (not just month milestones).
 ### Daily Compounding Formula
 
 ```
-FV = PV × (1 + r_daily)^n + PMT_daily × [((1 + r_daily)^n - 1) / r_daily]
+FV_contributions = PMT_daily × [((1 + r_daily)^n - 1) / r_daily]
 ```
 
 Where:
 
-- **FV** = Future Value at specific date
-- **PV** = Initial principal (starting allocation)
-- **PMT_daily** = Daily Investment Amount (derived from monthly: monthlyInvestment / 30)
+- **FV_contributions** = Future Value of contributions only
+- **PMT_daily** = Daily Investment Amount (typically back-calculated to reach target)
+- **r_daily** = Daily Return Rate (annual rate / 100 / 365)
+- **n** = Number of days from goal start date to target date
+
+*Note: The `startValue` (Initial Principal) is technically excluded from this specific function's output in the current implementation, as the projection line focuses on the growth of systematic investments.*
 - **r_daily** = Daily Return Rate (annual rate / 100 / 365)
 - **n** = Number of days from goal start date to target date
 
@@ -147,7 +150,7 @@ const compoundFactor = Math.pow(1 + monthlyRate, monthsFromStart);
 return monthlyInvestment * ((compoundFactor - 1) / monthlyRate);
 ```
 
-Compound interest formula for regular contributions.
+Compound interest formula for regular contributions. Note that detailed implementation excludes `startValue` (Initial Principal) from this specific calculation to isolate the growth of new contributions.
 
 ## Implementation Locations
 
@@ -224,12 +227,13 @@ export function getDaysDiff(startDate: Date, endDate: Date): number {
 #### `calculateProjectedValueByDate(startValue, monthlyInvestment, annualReturnRate, startDate, currentDate)`
 
 Calculates projected value at any specific date using daily compounding.
+*Note: `startValue` is passed for API consistency but is currently unused in the internal calculation logic.*
 
 ```typescript
 // Example: Project value for Dec 15 (not just Dec 31)
 const projected = calculateProjectedValueByDate(
-  startValue: 1000000,      // Initial allocation
-  monthlyInvestment: 100000, // Monthly contribution
+  startValue: 1000000,      // Passed but unused in projection logic
+  dailyInvestment: 3333,    // Daily contribution
   annualReturnRate: 7,       // 7% annual
   startDate: new Date('2025-01-01'),
   currentDate: new Date('2025-12-15') // Any date

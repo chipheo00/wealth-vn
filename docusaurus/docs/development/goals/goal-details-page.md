@@ -38,31 +38,28 @@ The Goal Detail Page is designed to answer three key questions for the user:
     - In years period, the projected line will be show the projected value depend on period selected, and the compounding formula for date(end of years).
     - In all period, the projected line will be show the projected value depend on period selected, and the compounding formula for date(end of all).
     - The last point's projected value on chart = the Projected future value in Overview card and Projected future value should be changed following the time period selected.
-  - Actual line:
+  - **Actual line**:
     - Show the actual value depend on period selected.
     - In chart, the current week, month or year value should be equal Current Progress value in Overview card.
-    - In chart, actual line start on goal start date (initial value = initialContribution) and end on goal due date(value =real contributed value from allocations).
-    - In weeks period, the actual line will be show the actual value depend on period selected(end of weeks).
-    - In months period, the actual line will be show the actual value depend on period selected(end of months).
-    - In years period, the actual line will be show the actual value depend on period selected(end of years).
-    - In all period, the actual line will be show the actual value depend on period selected(end of all).
-    - The last point's actual value on chart = the Current Progress value in Overview card.
-  - Chart progress status. We have status for goal is on track or off track. the logic is. if today's actual contributed value > projected value -> goal is on track. else goal is off track. The color of actual line will be green if goal is on track and red if goal is off track.
+    - In chart, actual line start on goal start date (initial value = `initialContribution`) and end on current date.
+    - Actual Value = Initial Contribution + (Account Growth × Allocation %).
+    - The last point's actual value on chart = the Current Progress value in Overview card (logic ensures consistency).
+  - Chart progress status. We have status for goal is on track or off track. The logic is: `if today's actual value >= projected value -> goal is on track`. The color of actual line will be green if on track and red/amber if off track.
 
-- Overview card:
-  - Target Amount: Large display of the goal's target.
-  - Current Progress: Percentage completion and current contributed value.
-  - Metrics Grid: Compact 2x2 grid showing:
-    - Monthly Investment (Calculate by goal duration, target amount, and return rate)
-    - Target Return Rate (User input)
-    - Time Remaining (Calculate by goal start date and due date and consider today to let user know how many time remaining to reach the goal)
-    - Projected Future Value (Calculate by goal duration, target amount, and return rate)
+- **Overview card**:
+  - **Target Amount**: Large display of the goal's target.
+  - **Current Progress**: Percentage completion and current contributed value (Total Value).
+  - **Metrics Grid**: Compact 2x2 grid showing:
+    - **Monthly Investment (DCA)**: The monthly contribution amount set on the goal.
+    - **Target Return Rate**: User input annual return rate.
+    - **Time Remaining**: Calculated time until proper Due Date.
+    - **Projected Future Value**: Value calculated using daily compounding of contributions at the selected period end date.
 
  Example:
-  - This is example of goal: Mua nha, 1000000000, 8%, 5 year, 1/1/2025, 1/1/2030
-  - The monthly investment will be 16,917,491.49.
-  - The projected future value will be 1,000,000,000 for period 'Al time'(This value should be reuse the last value in chart at the same time period). When user change the time period, the projected future value will be updated based on the selected time period.
-  - Current Progress ( 13.7% - 137,335,735.3 ) Current progress is the percentage of the goal's target amount that has been invested. The contributed value is the total amount that has been invested.
+  - This is example of goal: Mua nha, 1,000,000,000, 8%, 5 year, 1/1/2025, 1/1/2030, Initial 200,000,000.
+  - The system back-calculates the required daily investment to bridge the gap between (Initial + Growth) and Target.
+  - The projected future value displayed will be the Target Amount minus the projected growth of the Initial Principal (since projection line tracks contributions).
+  - Current Progress shows the Total Actual Value (Initial + Growth).
 
 ## Page Structure
 
@@ -165,7 +162,8 @@ The page relies on several React Query hooks:
 ### Core Calculations
 
 #### 1. Daily Investment (Reverse Engineering)
-To determine if a goal is on track, the system calculates the required daily investment to hit the target by the due date:
+To determine if a goal is on track, the system first calculates the required daily investment to hit the target by the due date.
+**Crucially**, this calculation *does* account for the `startValue` (Initial Principal). It finds the contribution needed to fill the gap between the Target and the Future Value of the Initial Principal.
 
 ```typescript
 const dailyInvestment = calculateDailyInvestment(
@@ -174,15 +172,17 @@ const dailyInvestment = calculateDailyInvestment(
   annualReturnRate,
   startDate,
   dueDate,
+  // Formula: Amount needed to fill (Target - FutureValue(Start))
 );
 ```
 
 #### 2. Projected Value
-Using the daily investment, we calculate where the user *should* be today:
+Using the calculated daily investment, we project the growth of *future contributions* to today's date (or any chart date).
+*Note: The `calculateProjectedValueByDate` function calculates the accumulated value of these daily investments only.*
 
 ```typescript
 projectedValueToday = calculateProjectedValueByDate(
-  startValue,
+  startValue, // Passed but unused in this specific function
   dailyInvestment,
   annualReturnRate,
   startDate,

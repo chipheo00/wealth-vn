@@ -478,42 +478,42 @@ Progress is capped at 100%.
 Uses compound interest formula with regular contributions:
 
 ```
-FV = PV × (1 + r)^n + PMT × [((1 + r)^n - 1) / r]
+FV = PMT × [((1 + r)^n - 1) / r]
 
 Where:
-- FV = Projected Future Value
-- PV = Sum of initial contributions (startValue)
+- FV = Projected Future Value (Growth from contributions only)
+- PMT = monthlyInvestment
 - r = monthlyRate (annualReturnRate / 100 / 12)
 - n = monthsFromStart (months from goal start to today)
-- PMT = monthlyInvestment
 ```
 
 **Code:**
 
 ```typescript
 function calculateProjectedValue(
-  startValue: number, // Sum of initial contributions
+  _startValue: number, // Unused: Initial contributions are excluded from projection logic
   monthlyInvestment: number,
   annualReturnRate: number,
   monthsFromStart: number,
 ): number {
-  if (monthsFromStart <= 0) return startValue;
+  if (monthsFromStart <= 0) return 0;
 
   const monthlyRate = annualReturnRate / 100 / 12;
 
   if (monthlyRate === 0) {
     // No compound interest
-    return startValue + monthlyInvestment * monthsFromStart;
+    return monthlyInvestment * monthsFromStart;
   }
 
   const compoundFactor = Math.pow(1 + monthlyRate, monthsFromStart);
-  const futurePV = startValue * compoundFactor;
   const futureContributions =
     monthlyInvestment * ((compoundFactor - 1) / monthlyRate);
 
-  return futurePV + futureContributions;
+  return futureContributions;
 }
 ```
+
+*Note: The actual implementation uses `calculateProjectedValueByDate` for higher precision, but the logic remains the same regarding the exclusion of initial principal growth in the "Projected" line.*
 
 ### 4. On-Track Determination
 
