@@ -19,11 +19,6 @@ RUN pnpm install
 # Copy source files
 COPY docusaurus/ ./
 
-# Copy documentation content (required for sync script)
-# Script expects docs at ../docs relative to docusaurus root
-WORKDIR /app
-COPY docs ./docs
-
 # Build documentation
 WORKDIR /app/docusaurus
 
