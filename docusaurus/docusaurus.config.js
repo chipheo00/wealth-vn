@@ -41,7 +41,7 @@ module.exports = {
   themeConfig: {
     image: "img/social-card.png",
     navbar: {
-      title: "WealthVN Docs",
+      title: "WealthVN",
       logo: {
         alt: "WealthVN Logo",
         src: "img/logo.svg",
