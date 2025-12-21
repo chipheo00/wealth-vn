@@ -22,11 +22,13 @@ function HeroSection() {
           <h1 className="hero-title">
             <span className="title-gradient">WealthVN</span>
             <br />
-            <span className="title-subtitle">Quản Lý Tài Chính Cá Nhân</span>
+            <span className="title-subtitle">Quản Lý Tài Chính Cá Nhân Chuyên Nghiệp</span>
           </h1>
           <p className="hero-description">
             Ứng dụng desktop mạnh mẽ giúp bạn theo dõi danh mục đầu tư,
             quản lý tài sản và đạt được mục tiêu tài chính một cách dễ dàng.
+            Với WealthVN, mọi dữ liệu đều được lưu ở máy của bạn, không cần
+            kết nối internet hay lo lắng về bảo mật thông tin. Dữ liệu về tài sản trên thị trường Việt Nam đầy đủ cổ phiếu, trái phiếu, chứng chỉ quỹ, vàng, và cả tài sản mã hóa.
           </p>
           <div className="hero-buttons">
             <Link className="btn btn-primary" to="https://github.com/chipheo00/vn-wealthfolio/releases">
@@ -38,15 +40,17 @@ function HeroSection() {
               <span className="stat-number">100%</span>
               <span className="stat-label">Miễn Phí</span>
             </div>
-            <div className="stat-divider"></div>
             <div className="stat-item">
               <span className="stat-number">🔒</span>
-              <span className="stat-label">Bảo Mật Cao</span>
+              <span className="stat-label">An Toàn</span>
             </div>
-            <div className="stat-divider"></div>
             <div className="stat-item">
-              <span className="stat-number">📊</span>
-              <span className="stat-label">Offline First</span>
+              <span className="stat-number">🌐</span>
+              <span className="stat-label">Đa Ngôn Ngữ</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-number">🇻🇳</span>
+              <span className="stat-label">Dữ liệu Việt Nam</span>
             </div>
           </div>
         </div>
