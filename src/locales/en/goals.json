@@ -295,5 +295,19 @@
     "errors": {
       "amountNegative": "Amount cannot be negative"
     }
+  },
+  "completedGoal": {
+    "badge": "Completed",
+    "description": "This goal has been achieved. All allocations have been released and are now available for other goals.",
+    "allocationHistory": "Allocation History",
+    "historyDescription": "Historical record of allocations for this completed goal",
+    "allocationsReleased": "Allocations have been released and are now available for other goals.",
+    "initialContribution": "Initial",
+    "finalValue": "Final Value",
+    "growthPercent": "Growth (%)",
+    "period": "Period",
+    "reactivate": "Reactivate Goal",
+    "markComplete": "Mark as Completed",
+    "complete": "Complete"
   }
 }

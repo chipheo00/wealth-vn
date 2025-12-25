@@ -295,5 +295,19 @@
     "errors": {
       "amountNegative": "Số tiền không được âm"
     }
+  },
+  "completedGoal": {
+    "badge": "Hoàn thành",
+    "description": "Mục tiêu này đã đạt được. Tất cả phân bổ đã được giải phóng và có sẵn cho các mục tiêu khác.",
+    "allocationHistory": "Lịch sử phân bổ",
+    "historyDescription": "Bản ghi lịch sử phân bổ cho mục tiêu đã hoàn thành",
+    "allocationsReleased": "Các phân bổ đã được giải phóng và có sẵn cho các mục tiêu khác.",
+    "initialContribution": "Ban đầu",
+    "finalValue": "Giá trị cuối",
+    "growthPercent": "Tăng trưởng (%)",
+    "period": "Thời gian",
+    "reactivate": "Kích hoạt lại",
+    "markComplete": "Đánh dấu hoàn thành",
+    "complete": "Hoàn thành"
   }
 }

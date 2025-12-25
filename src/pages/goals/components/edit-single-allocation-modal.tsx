@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Account, GoalAllocation } from "@/lib/types";
+import { Account, Goal, GoalAllocation } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatAmount } from "@wealthvn/ui";
 import { Percent } from "lucide-react";
@@ -29,6 +29,7 @@ interface EditSingleAllocationModalProps {
   currentAllocation?: GoalAllocation;
   currentAccountValue: number;
   allAllocations?: GoalAllocation[]; // All allocations for time-aware calculation
+  allGoals?: Goal[]; // All goals for checking isAchieved status
   onSubmit: (allocation: GoalAllocation) => Promise<void>;
 }
 
@@ -45,6 +46,7 @@ export function EditSingleAllocationModal({
   currentAllocation,
   currentAccountValue,
   allAllocations = [],
+  allGoals = [],
   onSubmit,
 }: EditSingleAllocationModalProps) {
   const { t } = useTranslation("goals");
@@ -63,6 +65,13 @@ export function EditSingleAllocationModal({
   const formatDateString = (date: string | undefined): string | null => {
     if (!date) return null;
     return date.split("T")[0];
+  };
+
+  // Helper to check if a goal is completed/achieved
+  // Completed goals' allocations should not be counted in unallocated calculations
+  const isGoalAchieved = (goalId: string): boolean => {
+    const goalInfo = allGoals.find(g => g.id === goalId);
+    return goalInfo?.isAchieved === true;
   };
 
   // Reset state when opening (in case props changed)
@@ -168,6 +177,7 @@ export function EditSingleAllocationModal({
     for (const alloc of allAllocations) {
       if (alloc.goalId === goal.id) continue; // Skip current goal
       if (alloc.accountId !== account.id) continue; // Skip other accounts
+      if (isGoalAchieved(alloc.goalId)) continue; // Skip completed goals - they are released
 
       const allocStartDate = formatDateString(alloc.allocationDate || alloc.startDate);
       if (!allocStartDate) continue;
@@ -214,9 +224,11 @@ export function EditSingleAllocationModal({
 
   // Calculate unallocated percentage
   // Only count allocations from goals that OVERLAP with current goal's time period
+  // Skip completed goals - their allocations are released
   const otherGoalsPercent = allAllocations.reduce((sum, alloc) => {
     if (alloc.goalId === goal.id) return sum;
     if (alloc.accountId !== account.id) return sum;
+    if (isGoalAchieved(alloc.goalId)) return sum; // Skip completed goals
 
     // Check if the other allocation's time period overlaps with current goal
     const overlaps = doDateRangesOverlap(

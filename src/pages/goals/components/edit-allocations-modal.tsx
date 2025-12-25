@@ -31,6 +31,7 @@ interface EditAllocationsModalProps {
   currentAccountValues: Map<string, number>;
   existingAllocations?: GoalAllocation[]; // Current goal's allocations (for prefilling)
   allAllocations?: GoalAllocation[]; // All allocations for calculation
+  allGoals?: Goal[]; // All goals for checking isAchieved status
   onSubmit: (allocations: GoalAllocation[]) => Promise<void>;
 }
 
@@ -48,6 +49,7 @@ export function EditAllocationsModal({
   currentAccountValues,
   existingAllocations = [],
   allAllocations = [],
+  allGoals = [],
   onSubmit,
 }: EditAllocationsModalProps) {
   const { t } = useTranslation("goals");
@@ -67,6 +69,13 @@ export function EditAllocationsModal({
   const formatDateString = (date: string | undefined): string | null => {
     if (!date) return null;
     return date.split("T")[0];
+  };
+
+  // Helper to check if a goal is completed/achieved
+  // Completed goals' allocations should not be counted in unallocated calculations
+  const isGoalAchieved = (goalId: string): boolean => {
+    const goalInfo = allGoals.find(g => g.id === goalId);
+    return goalInfo?.isAchieved === true;
   };
 
   // Fetch historical valuations for:
@@ -181,6 +190,8 @@ export function EditAllocationsModal({
         if (alloc.goalId === goal.id) continue;
         // Skip allocations for other accounts
         if (alloc.accountId !== account.id) continue;
+        // Skip completed goals' allocations - they are released
+        if (isGoalAchieved(alloc.goalId)) continue;
 
         // Get allocation's start date (allocationDate or startDate which is backfilled from goal)
         const allocStartDate = formatDateString(alloc.allocationDate || alloc.startDate);
@@ -432,8 +443,14 @@ export function EditAllocationsModal({
 
               // Calculate what's already allocated to other goals (percentage)
               // Only count allocations from goals that OVERLAP with current goal's time period
+              // Skip completed goals - their allocations are released
               const otherGoalsPercent = allAllocations.reduce((sum, existingAlloc) => {
                 if (existingAlloc.accountId === account.id && existingAlloc.goalId !== goal.id) {
+                  // Skip completed goals' allocations - they are released
+                  if (isGoalAchieved(existingAlloc.goalId)) {
+                    return sum;
+                  }
+
                   // Check if the other allocation's time period overlaps with current goal
                   // Use startDate/endDate from the allocation (backfilled from goal dates)
                   const overlaps = doDateRangesOverlap(

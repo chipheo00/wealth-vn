@@ -347,17 +347,21 @@ impl<T: GoalRepositoryTrait + Send + Sync> GoalServiceTrait for GoalService<T> {
             let start_date_changed = existing.start_date != updated_goal_data.start_date;
             let due_date_changed = existing.due_date != updated_goal_data.due_date;
 
-            // If start_date changed, reset all allocations for this goal to 0
+            // If start_date changed, reset all allocations for this goal to 0 and update dates
             // This is because allocations are tied to historical values at the start date
             if start_date_changed {
                 log::info!(
-                    "Goal {} start_date changed from {:?} to {:?}. Resetting all allocations to 0.",
+                    "Goal {} start_date changed from {:?} to {:?}. Resetting all allocations to 0 and updating dates.",
                     updated_goal_data.id,
                     existing.start_date,
                     updated_goal_data.start_date
                 );
                 self.goal_repo
-                    .reset_allocations_for_goal(updated_goal_data.id.clone())
+                    .reset_allocations_for_goal(
+                        updated_goal_data.id.clone(),
+                        updated_goal_data.start_date.clone(),
+                        updated_goal_data.due_date.clone(),
+                    )
                     .await?;
             }
             // If only due_date changed (not start_date), extend allocations' end_date
@@ -412,7 +416,8 @@ impl<T: GoalRepositoryTrait + Send + Sync> GoalServiceTrait for GoalService<T> {
     }
 
     fn load_goals_allocations(&self) -> Result<Vec<GoalsAllocation>> {
-        self.goal_repo.load_allocations_for_non_achieved_goals()
+        // Use load_all_allocations to include completed goals' allocations (for display/chart)
+        self.goal_repo.load_all_allocations()
     }
 
     fn validate_allocation_conflicts(

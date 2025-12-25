@@ -550,6 +550,57 @@ if new_goal.due_date != existing_goal.due_date {
 
 ---
 
+## Completed Goals
+
+When a goal is marked as completed (`isAchieved: true`), special behavior is applied:
+
+### Allocation Release
+
+Completed goals' allocations are **NOT counted** in unallocated calculations for other goals:
+
+```typescript
+// In allocation calculations:
+if (isGoalAchieved(alloc.goalId)) {
+  return sum; // Skip - allocations are released
+}
+```
+
+This means:
+- **Percentage Released**: Other goals see the full percentage available (e.g., if Goal 1 had 100%, new goals see 100% available)
+- **Balance Available**: The contributed value is still tracked historically, but not subtracted from available balance for *new* goals
+
+### Historical Records
+
+Completed goals preserve their historical data:
+- **Chart**: Shows the final achievement record (read-only)
+- **Allocation History**: Displays the allocations as they were at completion
+- **No Editing**: Edit/delete buttons are hidden for completed goals
+
+### UI Changes
+
+When viewing a completed goal's detail page:
+
+| Element | Active Goal | Completed Goal |
+|---------|-------------|----------------|
+| Header | Normal | Shows ✅ "Completed" badge |
+| Description | Normal | "Goal achieved. Allocations released." |
+| "Edit Allocations" button | Visible | Hidden |
+| Allocations Section | "Current Allocations" with edit actions | "Allocation History" (read-only) |
+| Info Message | - | Green box: "Allocations have been released..." |
+
+### Technical Implementation
+
+**Files Modified:**
+- `edit-allocations-modal.tsx` - Skip completed goals in calculations
+- `edit-single-allocation-modal.tsx` - Skip completed goals in calculations
+- `goal-details-page.tsx` - Conditional UI for completed goals
+- `allocation-history-table.tsx` - Pass `allGoals` prop
+
+**New Props:**
+- `allGoals: Goal[]` - Passed to allocation modals/tables to check `isAchieved` status
+
+---
+
 ## Related Documentation
 
 - [Goal Detail Page](./goal-details-page.md) - UI Components

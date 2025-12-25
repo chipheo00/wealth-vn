@@ -155,6 +155,7 @@ export function GoalAllocationsOverview({
           account={selectedAllocation.account}
           currentAccountValue={currentAccountValues.get(selectedAllocation.account.id) || 0}
           allAllocations={allocations}
+          allGoals={goals}
           onSubmit={onAllocationCreated}
         />
       )}
