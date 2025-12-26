@@ -60,7 +60,7 @@ export function useGoalValuationHistory(
   period: TimePeriodOption = "months",
   options: UseGoalValuationHistoryOptions = {}
 ): UseGoalValuationHistoryResult {
-  const { startValue: passedStartValue, projectedFutureValue: passedProjectedFutureValue } = options;
+  const { projectedFutureValue: passedProjectedFutureValue } = options;
 
   // Fetch allocations for this goal
   const {
@@ -201,8 +201,6 @@ export function useGoalValuationHistory(
 
     const aggregatedActuals = aggregateValuationsByPeriod(actualValuesByDate, dateIntervals, period);
 
-    // Calculate daily investment for projections - REMOVED as it's calculated internally now
-    const startValue = passedStartValue ?? allocations?.reduce((sum, a) => sum + (a.initialContribution || 0), 0) ?? 0;
     const annualReturnRate = goal.targetReturnRate ?? 0;
 
     // Build chart data points
@@ -240,7 +238,7 @@ export function useGoalValuationHistory(
         if (isAtDueDate && passedProjectedFutureValue !== undefined) {
           projected = passedProjectedFutureValue;
         } else {
-          projected = startValue + calculateProjectedValueByDate(
+          projected = calculateProjectedValueByDate(
             goal.targetAmount,
             annualReturnRate,
             goalStartDate,
@@ -265,7 +263,6 @@ export function useGoalValuationHistory(
     historicalValuations,
     allocations,
     period,
-    passedStartValue,
     passedProjectedFutureValue,
   ]);
 

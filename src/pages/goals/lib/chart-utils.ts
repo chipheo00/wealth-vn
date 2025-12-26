@@ -14,6 +14,7 @@ import {
     endOfWeek,
     endOfYear,
     format,
+    getWeek,
     isAfter,
     isBefore,
     isEqual,
@@ -171,7 +172,11 @@ export function formatDateLabel(date: Date, period: TimePeriodOption, specialLab
 export function isSamePeriod(date: Date, today: Date, period: TimePeriodOption): boolean {
   switch (period) {
     case "weeks":
-      return format(date, "yyyy-ww") === format(today, "yyyy-ww");
+      // Use getWeek with consistent weekStartsOn to match interval generation
+      // This ensures Dec 28 (Sunday, week end) matches Dec 26 (Friday, today)
+      // when both are in the same Monday-Sunday week
+      return getWeek(date, { weekStartsOn: 1 }) === getWeek(today, { weekStartsOn: 1 }) &&
+             format(date, "yyyy") === format(today, "yyyy");
     case "months":
       return format(date, "yyyy-MM") === format(today, "yyyy-MM");
     case "years":
